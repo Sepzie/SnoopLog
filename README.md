@@ -114,6 +114,7 @@ Log sources → Ingestion (FastAPI) → Pre-filter → ML scorer (IsolationFores
 | POST | `/api/ingest/raw` | Ingest plain-text logs |
 | WS | `/ws` | WebSocket for real-time events |
 
+
 ## Environment Variables
 
 See [.env.example](.env.example) for all required variables.
