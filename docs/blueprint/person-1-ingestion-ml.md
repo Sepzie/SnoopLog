@@ -1,6 +1,6 @@
 # Person 1: Ingestion + ML Scoring + CLI
 
-## Sherlog | HackTheBreak 2026
+## SnoopLog | HackTheBreak 2026
 
 ---
 
@@ -15,7 +15,7 @@ Everything from raw log input to a scored log event, plus the CLI tool. You emit
 3. Log parser — normalizes any format to shared Pydantic schema
 4. Rule-based pre-filter — drops health checks, debug, static assets, k8s probes
 5. ML scorer — IsolationForest via scikit-learn + heuristic fallback
-6. CLI — `Sherlog watch` and `Sherlog init`
+6. CLI — `SnoopLog watch` and `SnoopLog init`
 7. **Wire log buffer** — call `add_to_log_buffer()` after scoring so Person 2's `search_logs` tool works
 
 ---
@@ -78,14 +78,14 @@ Filtered logs still get emitted (Person 3 needs them for stats) but marked `filt
 
 Built with `typer`. Two commands:
 
-**`Sherlog init`** — prompts for endpoint URL and app name, writes `.Sherlog.yml`.
+**`SnoopLog init`** — prompts for endpoint URL and app name, writes `.SnoopLog.yml`.
 
-**`Sherlog watch`** — reads stdin (or `--file`), batches logs, POSTs to `/api/ingest`. Prints compact summary showing high/medium counts. Handles connection failures silently (logging should never break the app).
+**`SnoopLog watch`** — reads stdin (or `--file`), batches logs, POSTs to `/api/ingest`. Prints compact summary showing high/medium counts. Handles connection failures silently (logging should never break the app).
 
 ```bash
 # Usage
-docker logs -f my-app | Sherlog watch --endpoint https://Sherlog.example.com --source my-app
-tail -f /var/log/app.log | Sherlog watch
+docker logs -f my-app | SnoopLog watch --endpoint https://SnoopLog.example.com --source my-app
+tail -f /var/log/app.log | SnoopLog watch
 ```
 
 **Note:** The CLI is shown in the demo as "how you'd integrate with your own app." The primary demo flow uses the Docker sidecar, not the CLI.

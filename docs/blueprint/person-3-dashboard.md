@@ -1,6 +1,6 @@
 # Person 3: Dashboard
 
-## Sherlog | HackTheBreak 2026
+## SnoopLog | HackTheBreak 2026
 
 ---
 
@@ -38,7 +38,7 @@ Single page, no routing.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Sherlog    ● Connected    [stats bar]        │
+│  SnoopLog    ● Connected    [stats bar]        │
 ├────────────────────┬────────────────────────────┤
 │  Live log stream   │  Incident feed             │
 │  (scrolling, auto- │  (cards, click to expand)  │
