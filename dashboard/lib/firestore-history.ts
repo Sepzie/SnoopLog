@@ -4,37 +4,47 @@ import {
   query,
   orderBy,
   limit,
-  getDocs,
   doc,
-  getDoc,
+  onSnapshot,
+  type Unsubscribe,
 } from "firebase/firestore";
 
-export async function fetchHistoricalLogs(max = 200) {
+export function subscribeToLogs(
+  callback: (logs: unknown[]) => void,
+  max = 200,
+): Unsubscribe {
   const db = getDb();
   const q = query(
     collection(db, "snooplog-logs"),
     orderBy("timestamp", "desc"),
     limit(max),
   );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data()).reverse();
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => d.data()).reverse());
+  });
 }
 
-export async function fetchHistoricalIncidents(max = 50) {
+export function subscribeToIncidents(
+  callback: (incidents: unknown[]) => void,
+  max = 50,
+): Unsubscribe {
   const db = getDb();
   const q = query(
     collection(db, "snooplog-incidents"),
     orderBy("timestamp", "desc"),
     limit(max),
   );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data());
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => d.data()));
+  });
 }
 
-export async function fetchStats() {
+export function subscribeToStats(
+  callback: (stats: Record<string, unknown> | null) => void,
+): Unsubscribe {
   const db = getDb();
   const ref = doc(db, "snooplog-stats", "current");
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  return snap.data();
+  return onSnapshot(ref, (snap) => {
+    callback(snap.exists() ? (snap.data() as Record<string, unknown>) : null);
+  });
 }

@@ -18,11 +18,10 @@ import {
 } from "@/lib/mockData";
 import type { IncidentFeedItem } from "./incidentTypes";
 import type { LogEvent } from "./LogRow";
-import { resolveWebSocketUrl } from "./ws";
 import {
-  fetchHistoricalLogs,
-  fetchHistoricalIncidents,
-  fetchStats,
+  subscribeToLogs,
+  subscribeToIncidents,
+  subscribeToStats,
 } from "@/lib/firestore-history";
 
 const MAX_LOGS = 200;
@@ -43,11 +42,6 @@ type StatsState = {
   incidentsRaised: number;
   toolCalls: number;
   logsSuppressed: number;
-};
-
-type BusMessage = {
-  type?: string;
-  data?: unknown;
 };
 
 type LiveDataContextValue = {
@@ -352,147 +346,39 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    // Load historical data from Firestore on mount
-    async function loadHistory() {
-      console.log("[SnoopLog] Loading Firestore history...");
-      try {
-        const [histLogs, histIncidents, histStats] = await Promise.all([
-          fetchHistoricalLogs(),
-          fetchHistoricalIncidents(),
-          fetchStats(),
-        ]);
-        console.log("[SnoopLog] Firestore loaded —", histLogs.length, "logs,", histIncidents.length, "incidents, stats:", histStats);
-        if (histLogs.length) setLogs(histLogs as LogEvent[]);
-        if (histIncidents.length)
-          setIncidents(
-            histIncidents
-              .map(normalizeIncident)
-              .filter(Boolean) as IncidentFeedItem[],
-          );
-        if (histStats)
-          setStats({
-            logsScored: histStats.logs_scored ?? 0,
-            triagedBatches: histStats.triaged_batches ?? 0,
-            incidentsRaised: histStats.incidents_raised ?? 0,
-            toolCalls: histStats.tool_calls ?? 0,
-            logsSuppressed: histStats.logs_suppressed ?? 0,
-          });
-      } catch (e) {
-        console.warn("[SnoopLog] Could not load Firestore history:", e);
-      }
-    }
-    loadHistory();
+    // Real-time Firestore listeners — no WebSocket, no pipeline wake-up
+    let gotFirstSnapshot = false;
 
-    let ws: WebSocket | null = null;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-    let stopped = false;
-    let retryDelay = 1500;
-
-    const connect = () => {
-      setConnectionState((prev) => (prev === "connected" ? prev : "checking"));
-      const wsUrl = resolveWebSocketUrl();
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
+    const unsubLogs = subscribeToLogs((data) => {
+      if (data.length) setLogs(data as LogEvent[]);
+      if (!gotFirstSnapshot) {
+        gotFirstSnapshot = true;
         setConnectionState("connected");
-        setLastError(null);
-        retryDelay = 1500;
-        heartbeatTimer = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send("ping");
-          }
-        }, 15000);
-      };
+      }
+    });
 
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data) as BusMessage;
-          switch (msg.type) {
-            case "log:scored":
-              if (msg.data && typeof msg.data === "object") {
-                setLogs((prev) =>
-                  [...prev, msg.data as LogEvent].slice(-MAX_LOGS),
-                );
-              }
-              setStats((prev) => ({ ...prev, logsScored: prev.logsScored + 1 }));
-              break;
-            case "log:triaged":
-              setStats((prev) => ({
-                ...prev,
-                triagedBatches: prev.triagedBatches + 1,
-              }));
-              break;
-            case "incident:created": {
-              const item = normalizeIncident(msg.data);
-              if (item) {
-                setIncidents((prev) => [item, ...prev].slice(0, MAX_INCIDENTS));
-              }
-              setStats((prev) => ({
-                ...prev,
-                incidentsRaised: prev.incidentsRaised + 1,
-              }));
-              break;
-            }
-            case "agent:tool_call": {
-              const item = normalizeAgentCall(msg.data);
-              if (item) {
-                setAgentCalls((prev) => [...prev, item].slice(-MAX_AGENT_CALLS));
-              }
-              setStats((prev) => ({ ...prev, toolCalls: prev.toolCalls + 1 }));
-              break;
-            }
-            case "log:suppressed":
-              setStats((prev) => ({
-                ...prev,
-                logsSuppressed: prev.logsSuppressed + 1,
-              }));
-              break;
-            default:
-              break;
-          }
-        } catch {
-          // Ignore malformed events so the stream stays alive.
-        }
-      };
-
-      ws.onerror = () => {
-        setLastError(
-          "Live stream unavailable. Viewing historical data.",
+    const unsubIncidents = subscribeToIncidents((data) => {
+      if (data.length)
+        setIncidents(
+          data.map(normalizeIncident).filter(Boolean) as IncidentFeedItem[],
         );
-      };
+    });
 
-      ws.onclose = (event) => {
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer);
-          heartbeatTimer = null;
-        }
-        if (stopped) {
-          return;
-        }
-        setConnectionState("disconnected");
-        setLastError(
-          event.reason ||
-            "Live stream offline. Viewing historical data from last session.",
-        );
-        retryDelay = Math.min(retryDelay * 2, 60000);
-        retryTimer = setTimeout(connect, retryDelay);
-      };
-    };
-
-    connect();
+    const unsubStats = subscribeToStats((data) => {
+      if (data)
+        setStats({
+          logsScored: (data.logs_scored as number) ?? 0,
+          triagedBatches: (data.triaged_batches as number) ?? 0,
+          incidentsRaised: (data.incidents_raised as number) ?? 0,
+          toolCalls: (data.tool_calls as number) ?? 0,
+          logsSuppressed: (data.logs_suppressed as number) ?? 0,
+        });
+    });
 
     return () => {
-      stopped = true;
-      if (retryTimer) {
-        clearTimeout(retryTimer);
-      }
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-      }
-      if (ws && ws.readyState < WebSocket.CLOSING) {
-        ws.close();
-      }
+      unsubLogs();
+      unsubIncidents();
+      unsubStats();
     };
   }, [useMockData]);
 
