@@ -33,7 +33,7 @@ export function IncidentFeed({ onSelectIncident }: IncidentFeedProps) {
   }
 
   return (
-    <div className="agent-scroll h-full space-y-2 overflow-y-auto pr-1">
+    <div className="agent-scroll h-full min-w-0 space-y-2 overflow-y-auto overflow-x-hidden pr-1">
       {incidentCards}
     </div>
   );
