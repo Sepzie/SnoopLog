@@ -137,6 +137,14 @@ def filter_k8s_probes() -> bool:
     return _section("filters").get("k8s_probes", True)
 
 
+# ── Integrations (from YAML) ─────────────────────────────────
+
+def integration_discord_enabled() -> bool:
+    integrations = _section("integrations")
+    discord = integrations.get("discord", {}) or {}
+    return bool(discord.get("enabled", True))
+
+
 # ── Buffer (internal default) ────────────────────────────────
 
 def buffer_max_size() -> int:
