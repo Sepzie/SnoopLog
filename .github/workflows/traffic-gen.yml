@@ -9,7 +9,7 @@ on:
   workflow_dispatch: {} # Allow manual trigger
 
 env:
-  DUMMY_APP_URL: ${{ vars.DUMMY_APP_URL }}
+  DUMMY_APP_URL: ${{ secrets.DUMMY_APP_URL != '' && secrets.DUMMY_APP_URL || vars.DUMMY_APP_URL }}
   DEMO_DAY_DATE: '2026-03-15'
   DEMO_DAY_TZ: 'America/Vancouver'
 
@@ -115,7 +115,7 @@ jobs:
       - name: Verify pipeline health
         if: steps.mode.outputs.should_run == 'true'
         run: |
-          PIPELINE_URL="${{ vars.PIPELINE_URL }}"
+          PIPELINE_URL="${{ secrets.PIPELINE_URL != '' && secrets.PIPELINE_URL || vars.PIPELINE_URL }}"
           if [ -n "$PIPELINE_URL" ]; then
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PIPELINE_URL/health" || echo "000")
             echo "Pipeline health check: $STATUS"
