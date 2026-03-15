@@ -35,8 +35,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    ports:
-      - "3001:3001"
     tmpfs:
       - /tmp
     deploy:

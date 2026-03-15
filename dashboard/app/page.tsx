@@ -48,7 +48,21 @@ function SectionTabs({
 function DashboardContent() {
   const usingMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
   const [activeView, setActiveView] = useState<ViewMode>("overview");
-  const { connectionState, lastError, stats } = useLiveData();
+  const { connectionState, lastError, stats, incidents, agentCalls } = useLiveData();
+  const latestIncident = incidents[0];
+  const latestAgentCall = agentCalls[agentCalls.length - 1];
+  const latestIncidentSummary = latestIncident
+    ? `${latestIncident.severity.toUpperCase()} from ${latestIncident.source ?? "unknown source"}`
+    : "No incidents raised yet";
+  const latestIncidentDetail = latestIncident
+    ? `${latestIncident.logCount ?? latestIncident.relatedLogIds.length ?? 1} related log(s)`
+    : "Waiting for the first escalated incident report";
+  const latestAgentSummary = latestAgentCall
+    ? latestAgentCall.command
+    : "No tool calls captured yet";
+  const latestAgentDetail = latestAgentCall
+    ? new Date(latestAgentCall.timestamp).toLocaleTimeString()
+    : "Agent activity will appear after investigation starts";
 
   return (
     <main className="min-h-screen bg-[#f4f4f1] text-[var(--text-strong)]">
@@ -78,7 +92,6 @@ function DashboardContent() {
             </div>
 
             <div className="flex flex-col items-start gap-3 lg:items-end">
-              <ConnectionStatus />
               <span className="rounded-full bg-[#f4f7ff] px-3 py-1 text-xs font-medium text-[#5c67c7]">
                 {usingMockData ? "Mock mode" : "Realtime mode"}
               </span>
@@ -88,29 +101,25 @@ function DashboardContent() {
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             <div className="rounded-xl border border-black/10 bg-[#fbfbf8] px-4 py-3 shadow-[0_1px_0_rgba(255,255,255,0.7)]">
               <p className="text-[11px] uppercase tracking-[0.16em] text-[#9a98a3]">
-                Data Source
+                Stream Status
               </p>
-              <p className="mt-1 text-sm text-[#4d4a57]">
-                Person 1 scoring plus Person 2 triage, tool-call, suppression,
-                and incident events
-              </p>
+              <div className="mt-2">
+                <ConnectionStatus />
+              </div>
             </div>
             <div className="rounded-xl border border-black/10 bg-[#fbfbf8] px-4 py-3 shadow-[0_1px_0_rgba(255,255,255,0.7)]">
               <p className="text-[11px] uppercase tracking-[0.16em] text-[#9a98a3]">
-                WebSocket
+                Latest Incident
               </p>
-              <p className="mt-1 text-sm text-[#4d4a57]">
-                Direct local stream at <span className="font-mono">ws://localhost:3001/ws</span>
-              </p>
+              <p className="mt-1 text-sm font-medium text-[#2b2735]">{latestIncidentSummary}</p>
+              <p className="mt-1 text-sm text-[#4d4a57]">{latestIncidentDetail}</p>
             </div>
             <div className="rounded-xl border border-black/10 bg-[#fbfbf8] px-4 py-3 shadow-[0_1px_0_rgba(255,255,255,0.7)]">
               <p className="text-[11px] uppercase tracking-[0.16em] text-[#9a98a3]">
-                Current Scope
+                Latest Agent Step
               </p>
-              <p className="mt-1 text-sm text-[#4d4a57]">
-                Logs scored, batches triaged, incidents raised, tool calls, and
-                benign repeats suppressed
-              </p>
+              <p className="mt-1 truncate text-sm font-medium text-[#2b2735]">{latestAgentSummary}</p>
+              <p className="mt-1 text-sm text-[#4d4a57]">{latestAgentDetail}</p>
             </div>
           </div>
 
