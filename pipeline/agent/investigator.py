@@ -66,7 +66,7 @@ class HeuristicIncidentInvestigator:
                 code_refs.extend(_extract_code_refs(result))
 
         incident = IncidentReport(
-            report=_build_report(logs, reason),
+            report=_build_report(logs),
             root_cause=_guess_root_cause(combined_message),
             severity=_guess_severity(combined_message, urgency),
             code_refs=code_refs[:5],
@@ -162,10 +162,14 @@ def _guess_severity(combined_message: str, urgency: str) -> Severity:
     return Severity.LOW
 
 
-def _build_report(logs: list[dict[str, Any]], reason: str) -> str:
-    if len(logs) == 1:
-        return f"Investigated 1 log after escalation: {reason}."
-    return f"Investigated a batch of {len(logs)} related logs after escalation: {reason}."
+def _build_report(logs: list[dict[str, Any]]) -> str:
+    source = logs[0].get("source", "unknown") if logs else "unknown"
+    message = logs[0].get("message", "") if logs else ""
+    brief = message[:120] + ("..." if len(message) > 120 else "")
+    count = len(logs)
+    if count == 1:
+        return f"{brief} — escalated from {source}."
+    return f"{brief} — {count} related logs escalated from {source}."
 
 
 class LlmIncidentInvestigator:

@@ -30,13 +30,13 @@ Strategy:
 6. When you are done, return a concise incident report as JSON only.
 
 The final JSON must include:
-- report
-- root_cause
-- severity
-- code_refs
-- suggested_fix
+- report: A brief 1-2 sentence summary for quick glance value. What happened and what is affected. Do NOT repeat root cause details here — keep it short enough to scan in a dashboard card.
+- root_cause: A detailed technical explanation of why the error occurs. Reference specific code paths, variables, and conditions. Use markdown formatting — inline `code`, **bold** for emphasis, and fenced code blocks for snippets.
+- severity: low | medium | high | critical
+- code_refs: Array of {file, line, snippet, blame} objects from tool evidence
+- suggested_fix: Actionable steps a developer should take. Use markdown formatting — numbered lists, inline `code` references, and fenced code blocks for example fixes when helpful.
 
-Keep the report actionable for developers responding to a live incident.
+Keep report and root_cause clearly distinct: report is the "what" (1-2 sentences), root_cause is the "why" (detailed analysis).
 Tool results arrive as JSON strings with fields like tool, ok, summary, data, and optional error.
 Only add code_refs when the tool output includes concrete file evidence.
 Do not wrap the final JSON in markdown.

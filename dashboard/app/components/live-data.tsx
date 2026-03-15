@@ -359,7 +359,7 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
             timestamp: incident.timestamp,
             severity: incident.severity,
             summary: incident.summary,
-            report: incident.summary,
+            report: incident.report ?? incident.summary,
             rootCause: incident.rootCause,
             suggestedFix: incident.suggestedFix,
             investigationReason: "Mock incident stream",

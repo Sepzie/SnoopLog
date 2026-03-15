@@ -19,8 +19,9 @@ export type MockIncident = {
   timestamp: string;
   severity: "medium" | "high" | "critical";
   summary: string;
+  report: string;
   rootCause: string;
-  codeRefs: Array<{ file: string; line: number }>;
+  codeRefs: Array<{ file: string; line: number; snippet?: string; blame?: string }>;
   suggestedFix: string;
 };
 
@@ -163,10 +164,28 @@ export function createMockIncident(): MockIncident {
     severity,
     summary:
       "Checkout reliability degraded due to upstream payment instability",
-    rootCause: "No timeout guard on createPaymentIntent in payment client",
-    codeRefs: [{ file: "services/payment/client.ts", line: 88 }],
+    report:
+      "Payment API calls failing intermittently during checkout, causing order completion failures for ~12% of users.",
+    rootCause:
+      "The `createPaymentIntent` call in the payment client has **no timeout guard**, so when the upstream Stripe API is slow, the request hangs indefinitely.\n\nThe connection pool exhausts after ~30 concurrent requests, causing a cascade:\n\n```javascript\n// services/payment/client.ts:88\nconst intent = await stripe.paymentIntents.create(params);\n// No timeout — hangs until TCP keepalive kills it (~15min)\n```\n\nThe `inventorySnapshot` variable is hardcoded to `null` on the error path (line 15), then `.reservations.map()` is called without null checking.",
+    codeRefs: [
+      {
+        file: "services/payment/client.ts",
+        line: 88,
+        snippet:
+          "const intent = await stripe.paymentIntents.create(params);\n// No timeout — hangs until TCP keepalive kills it",
+        blame: "alice@company.com (2 weeks ago)",
+      },
+      {
+        file: "lib/error_scenarios.js",
+        line: 15,
+        snippet:
+          "const inventorySnapshot = null; // Intentional bug for demo\nreturn { productId: product.id, reservationIds: inventorySnapshot.reservations.map((r) => r.id) };",
+        blame: "bob@company.com (3 days ago)",
+      },
+    ],
     suggestedFix:
-      "Add 3s timeout, jittered retry backoff, and a circuit breaker",
+      "1. Add a **3-second timeout** to `createPaymentIntent`:\n```javascript\nconst intent = await Promise.race([\n  stripe.paymentIntents.create(params),\n  timeout(3000),\n]);\n```\n2. Add null check before accessing `inventorySnapshot.reservations`:\n```javascript\nconst ids = inventorySnapshot?.reservations?.map(r => r.id) ?? [];\n```\n3. Consider adding a **circuit breaker** around the Stripe client to fail fast when error rate exceeds threshold.",
   };
 }
 

@@ -56,8 +56,8 @@ export function IncidentCard({ incident, onSelect }: IncidentCardProps) {
       onClick={() => onSelect(incident.id)}
       className={`group w-full rounded-xl border border-black/6 border-l-4 ${colors.border} bg-white p-3.5 text-left transition-all hover:border-black/10 hover:shadow-[0_4px_16px_rgba(20,20,20,0.06)] active:scale-[0.995]`}
     >
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-xs font-bold tabular-nums text-rose-600">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-sm font-bold tabular-nums text-rose-600">
           {occurrenceCount}
         </span>
         <div className="min-w-0 flex-1">
