@@ -17,7 +17,7 @@ ml:
 # --- Snapshots (model + state persistence across restarts) ---
 snapshots:
   backend: "local"               # "local" for disk, "gcs" for Google Cloud Storage
-  local_dir: "data/snapshots"    # local backend: directory for snapshot files
+  local_dir: "/data/snapshots"   # local backend: directory for snapshot files
   gcs_bucket: ""                 # gcs backend: bucket name (e.g. "my-project-snapshots")
   gcs_prefix: "snapshots"        # gcs backend: prefix/folder inside the bucket
 
