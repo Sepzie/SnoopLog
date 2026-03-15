@@ -2,55 +2,118 @@ name: Traffic Generator
 
 on:
   schedule:
-    # Run every 6 hours to keep Firestore data fresh for portfolio visitors
-    - cron: '0 */6 * * *'
+    # Burst every minute on March 15, then skip automatically outside March 15, 2026.
+    - cron: '* * 15 3 *'
+    # Keep Firestore warm with one daily run after demo day.
+    - cron: '0 16 * * *'
   workflow_dispatch: {} # Allow manual trigger
 
 env:
   DUMMY_APP_URL: ${{ vars.DUMMY_APP_URL }}
+  DEMO_DAY_DATE: '2026-03-15'
+  DEMO_DAY_TZ: 'America/Vancouver'
 
 jobs:
   generate-traffic:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 4
     steps:
-      - name: Generate order traffic
+      - name: Select traffic mode
+        id: mode
+        env:
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
+          set -euo pipefail
+
+          CURRENT_DATE="$(TZ="$DEMO_DAY_TZ" date +%F)"
+          MODE="daily"
+          SHOULD_RUN="true"
+
+          if [ "$EVENT_NAME" = "schedule" ] && [ "$EVENT_SCHEDULE" = "* * 15 3 *" ]; then
+            if [ "$CURRENT_DATE" = "$DEMO_DAY_DATE" ]; then
+              MODE="demo"
+            else
+              SHOULD_RUN="false"
+            fi
+          elif [ "$EVENT_NAME" = "schedule" ] && [ "$EVENT_SCHEDULE" = "0 16 * * *" ] && [ "$CURRENT_DATE" = "$DEMO_DAY_DATE" ]; then
+            SHOULD_RUN="false"
+          fi
+
+          echo "current_date=$CURRENT_DATE" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+          echo "Mode: $MODE | should_run: $SHOULD_RUN | schedule: ${EVENT_SCHEDULE:-manual}"
+
+      - name: Skip inactive schedule
+        if: steps.mode.outputs.should_run != 'true'
+        run: |
+          echo "Skipping this scheduled run based on the March 15, 2026 demo-day rules."
+
+      - name: Generate order traffic
+        if: steps.mode.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+
+          if [ -z "$DUMMY_APP_URL" ]; then
+            echo "DUMMY_APP_URL is not configured"
+            exit 1
+          fi
+
+          MODE="${{ steps.mode.outputs.mode }}"
+          if [ "$MODE" = "demo" ]; then
+            ORDER_COUNT=24
+            BROWSE_COUNT=12
+            WAIT_SECONDS=20
+            REQUEST_DELAY=0.2
+          else
+            ORDER_COUNT=8
+            BROWSE_COUNT=4
+            WAIT_SECONDS=10
+            REQUEST_DELAY=0.5
+          fi
+
           echo "Generating traffic against $DUMMY_APP_URL"
+          echo "Traffic mode: $MODE"
+          echo "Orders: $ORDER_COUNT | Browses: $BROWSE_COUNT | Wait: ${WAIT_SECONDS}s"
 
           # Simulate normal orders
-          for i in $(seq 1 10); do
+          for i in $(seq 1 "$ORDER_COUNT"); do
             curl -s -o /dev/null -w "%{http_code}" \
               "$DUMMY_APP_URL/api/orders" \
               -X POST -H 'Content-Type: application/json' \
               -d "{\"items\":[{\"id\":\"SKU-$i\",\"qty\":$((RANDOM % 5 + 1))}]}"
             echo " - order $i sent"
-            sleep 1
+            sleep "$REQUEST_DELAY"
           done
 
           # Simulate product browsing (generates info logs)
-          for i in $(seq 1 5); do
+          for i in $(seq 1 "$BROWSE_COUNT"); do
             curl -s -o /dev/null "$DUMMY_APP_URL/api/products" || true
-            sleep 0.5
+            echo " - browse $i sent"
+            sleep "$REQUEST_DELAY"
           done
 
           # Simulate error scenarios
-          curl -s -o /dev/null "$DUMMY_APP_URL/api/orders" \
-            -X POST -H 'Content-Type: application/json' \
-            -d '{"invalid": true}'
+          for payload in '{"invalid": true}' '{"items":[]}' '{"items":[{"id":"SKU-DEMO","qty":0}]}' '{}'; do
+            curl -s -o /dev/null "$DUMMY_APP_URL/api/orders" \
+              -X POST -H 'Content-Type: application/json' \
+              -d "$payload" || true
+            echo " - error case sent: $payload"
+          done
 
-          curl -s -o /dev/null "$DUMMY_APP_URL/api/orders" \
-            -X POST -H 'Content-Type: application/json' \
-            -d '{"items":[]}'
-
+          echo "wait_seconds=$WAIT_SECONDS" >> "$GITHUB_ENV"
           echo "Traffic generation complete"
 
       - name: Wait for pipeline processing
+        if: steps.mode.outputs.should_run == 'true'
         run: |
-          echo "Waiting 45s for pipeline to process, triage, and investigate..."
-          sleep 45
+          WAIT_SECONDS="${WAIT_SECONDS:-10}"
+          echo "Waiting ${WAIT_SECONDS}s for pipeline to process, triage, and investigate..."
+          sleep "$WAIT_SECONDS"
 
       - name: Verify pipeline health
+        if: steps.mode.outputs.should_run == 'true'
         run: |
           PIPELINE_URL="${{ vars.PIPELINE_URL }}"
           if [ -n "$PIPELINE_URL" ]; then
