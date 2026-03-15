@@ -27,8 +27,16 @@ services:
       - "3001"
     volumes:
       - repo-data:/repo:ro
+      - pipeline-data:/data
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL}
+      - OPENROUTER_TRIAGE_MODEL=${OPENROUTER_TRIAGE_MODEL}
+      - OPENROUTER_INVESTIGATION_MODEL=${OPENROUTER_INVESTIGATION_MODEL}
+      - KNOWN_LOG_TTL_SECONDS=${KNOWN_LOG_TTL_SECONDS}
+      - KNOWN_LOG_MAX_PATTERNS=${KNOWN_LOG_MAX_PATTERNS}
+      - KNOWN_LOG_BENIGN_MIN_REPEATS=${KNOWN_LOG_BENIGN_MIN_REPEATS}
+      - KNOWN_LOG_DB_PATH=${KNOWN_LOG_DB_PATH:-/data/known_patterns.db}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
       - REPO_PATH=/repo
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
@@ -37,6 +45,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
     tmpfs:
       - /tmp
     deploy:
@@ -146,6 +158,7 @@ services:
 volumes:
   caddy-data:
   repo-data:
+  pipeline-data:
   app-logs:
 
 networks:
