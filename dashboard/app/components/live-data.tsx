@@ -354,12 +354,14 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
 
     // Load historical data from Firestore on mount
     async function loadHistory() {
+      console.log("[SnoopLog] Loading Firestore history...");
       try {
         const [histLogs, histIncidents, histStats] = await Promise.all([
           fetchHistoricalLogs(),
           fetchHistoricalIncidents(),
           fetchStats(),
         ]);
+        console.log("[SnoopLog] Firestore loaded —", histLogs.length, "logs,", histIncidents.length, "incidents, stats:", histStats);
         if (histLogs.length) setLogs(histLogs as LogEvent[]);
         if (histIncidents.length)
           setIncidents(
@@ -376,7 +378,7 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
             logsSuppressed: histStats.logs_suppressed ?? 0,
           });
       } catch (e) {
-        console.warn("Could not load Firestore history:", e);
+        console.warn("[SnoopLog] Could not load Firestore history:", e);
       }
     }
     loadHistory();

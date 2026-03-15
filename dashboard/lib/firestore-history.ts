@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { getDb } from "./firebase";
 import {
   collection,
   query,
@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 
 export async function fetchHistoricalLogs(max = 200) {
+  const db = getDb();
   const q = query(
     collection(db, "snooplog-logs"),
     orderBy("timestamp", "desc"),
@@ -20,6 +21,7 @@ export async function fetchHistoricalLogs(max = 200) {
 }
 
 export async function fetchHistoricalIncidents(max = 50) {
+  const db = getDb();
   const q = query(
     collection(db, "snooplog-incidents"),
     orderBy("timestamp", "desc"),
@@ -30,6 +32,7 @@ export async function fetchHistoricalIncidents(max = 50) {
 }
 
 export async function fetchStats() {
+  const db = getDb();
   const ref = doc(db, "snooplog-stats", "current");
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;

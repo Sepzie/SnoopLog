@@ -1,10 +1,25 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-};
+let _app: FirebaseApp | null = null;
+let _db: Firestore | null = null;
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+export function getDb(): Firestore {
+  if (_db) return _db;
+
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+  console.log("[SnoopLog] Firebase init — apiKey:", apiKey ? "set" : "MISSING", "projectId:", projectId ?? "MISSING");
+
+  if (!apiKey || !projectId) {
+    throw new Error(
+      `Firebase config missing: apiKey=${apiKey ? "set" : "MISSING"}, projectId=${projectId ? "set" : "MISSING"}`,
+    );
+  }
+
+  _app = initializeApp({ apiKey, projectId });
+  _db = getFirestore(_app);
+  console.log("[SnoopLog] Firestore initialized successfully for project:", projectId);
+  return _db;
+}
