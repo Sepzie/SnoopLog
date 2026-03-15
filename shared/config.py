@@ -1,7 +1,8 @@
 """Central config loader for SnoopLog.
 
 Reads snooplog.yaml from the project root and exposes typed accessors.
-Every value has a sensible default so the app works without any config file.
+The YAML file holds only high-level, user-facing settings (volume, sensitivity,
+filters, snapshots).  All internal pipeline parameters live here as defaults.
 """
 
 from __future__ import annotations
@@ -15,6 +16,15 @@ import yaml
 # Walk up from shared/ to find project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _CONFIG_PATH = _PROJECT_ROOT / "snooplog.yaml"
+
+# ── Volume presets ────────────────────────────────────────────
+# Maps the user-facing "volume" knob to an ML window_size.
+_VOLUME_PRESETS: dict[str, int] = {
+    "small": 5_000,
+    "medium": 25_000,
+    "large": 100_000,
+}
+_DEFAULT_VOLUME = "small"
 
 
 def _load_raw() -> dict[str, Any]:
@@ -36,76 +46,84 @@ def reload_config() -> dict[str, Any]:
     return get_config()
 
 
-# ── Typed accessors ─────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────
 
 def _section(name: str) -> dict[str, Any]:
     return get_config().get(name, {}) or {}
 
 
-# --- ML ---
+# ── ML (internal defaults, window_size driven by volume preset) ──
+
 def ml_n_trees() -> int:
-    return _section("ml").get("n_trees", 25)
+    return 25
 
 def ml_tree_height() -> int:
-    return _section("ml").get("tree_height", 6)
+    return 6
 
 def ml_window_size() -> int:
-    return _section("ml").get("window_size", 10_000)
+    volume = get_config().get("volume", _DEFAULT_VOLUME)
+    return _VOLUME_PRESETS.get(volume, _VOLUME_PRESETS[_DEFAULT_VOLUME])
 
 def ml_max_weight() -> float:
-    return _section("ml").get("max_weight", 0.4)
+    return 0.4
 
 def ml_snapshot_interval() -> int:
-    return _section("ml").get("snapshot_interval", 1000)
+    return 1000
 
 
-# --- Snapshots ---
+# ── Snapshots (backend + bucket from YAML, rest internal) ────
+
 def snapshot_backend() -> str:
     return _section("snapshots").get("backend", "local")
 
 def snapshot_local_dir() -> str:
-    return _section("snapshots").get("local_dir", "data/snapshots")
+    return "/data/snapshots"
 
 def snapshot_gcs_bucket() -> str:
     return _section("snapshots").get("gcs_bucket", "")
 
 def snapshot_gcs_prefix() -> str:
-    return _section("snapshots").get("gcs_prefix", "snapshots")
+    return "snapshots"
 
 
-# --- Features ---
+# ── Features (internal defaults) ─────────────────────────────
+
 def feat_error_window_maxlen() -> int:
-    return _section("features").get("error_window_maxlen", 1000)
+    return 1000
 
 def feat_secs_since_error_cap() -> float:
-    return _section("features").get("secs_since_error_cap", 300.0)
+    return 300.0
 
 def feat_error_burst_window() -> int:
-    return _section("features").get("error_burst_window", 5)
+    return 5
 
 
-# --- Scoring ---
+# ── Scoring (internal defaults) ──────────────────────────────
+
+_LEVEL_BASE = {"fatal": 0.85, "error": 0.55, "warn": 0.25, "info": 0.05, "debug": 0.02, "unknown": 0.15}
+_BOOSTS = {"critical_keywords": 0.25, "error_keywords": 0.15, "warn_keywords": 0.10, "stack_trace": 0.10, "long_message": 0.05}
+
 def scoring_level_base() -> dict[str, float]:
-    defaults = {"fatal": 0.85, "error": 0.55, "warn": 0.25, "info": 0.05, "debug": 0.02, "unknown": 0.15}
-    return _section("scoring").get("level_base", defaults) or defaults
+    return _LEVEL_BASE
 
 def scoring_boosts() -> dict[str, float]:
-    defaults = {"critical_keywords": 0.25, "error_keywords": 0.15, "warn_keywords": 0.10, "stack_trace": 0.10, "long_message": 0.05}
-    return _section("scoring").get("boosts", defaults) or defaults
+    return _BOOSTS
 
 def scoring_long_message_threshold() -> int:
-    return _section("scoring").get("long_message_threshold", 200)
+    return 200
 
 
-# --- Tiers ---
+# ── Tiers (from YAML "sensitivity" section) ──────────────────
+
 def tier_high() -> float:
-    return _section("tiers").get("high", 0.7)
+    return _section("sensitivity").get("high", 0.7)
 
 def tier_medium() -> float:
-    return _section("tiers").get("medium", 0.3)
+    return _section("sensitivity").get("medium", 0.3)
 
 
-# --- Filters ---
+# ── Filters (from YAML) ──────────────────────────────────────
+
 def filter_debug_level() -> bool:
     return _section("filters").get("debug_level", True)
 
@@ -119,20 +137,22 @@ def filter_k8s_probes() -> bool:
     return _section("filters").get("k8s_probes", True)
 
 
-# --- Buffer ---
+# ── Buffer (internal default) ────────────────────────────────
+
 def buffer_max_size() -> int:
-    return _section("buffer").get("max_size", 5000)
+    return 5000
 
 
-# --- CLI ---
+# ── CLI (internal defaults) ──────────────────────────────────
+
 def cli_default_endpoint() -> str:
-    return _section("cli").get("default_endpoint", "http://localhost:3001")
+    return "http://localhost:3001"
 
 def cli_batch_size() -> int:
-    return _section("cli").get("batch_size", 50)
+    return 50
 
 def cli_flush_interval() -> float:
-    return _section("cli").get("flush_interval", 2.0)
+    return 2.0
 
 def cli_http_timeout() -> int:
-    return _section("cli").get("http_timeout", 5)
+    return 5
