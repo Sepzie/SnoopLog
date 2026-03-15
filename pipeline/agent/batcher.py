@@ -56,6 +56,17 @@ class MediumLogBatcher:
         triage_payload = build_triage_event_payload(source, batch, triage.model_dump())
         await bus.emit("log:triaged", triage_payload)
 
+        if triage.escalate:
+            logger.warning(
+                "Triage ESCALATED %d logs from %s → investigation | reason: %s",
+                len(batch), source, triage.reason,
+            )
+        else:
+            logger.info(
+                "Triage dismissed %d logs from %s | reason: %s",
+                len(batch), source, triage.reason,
+            )
+
         if self._pattern_memory is not None and not triage.escalate:
             self._pattern_memory.remember(
                 batch,

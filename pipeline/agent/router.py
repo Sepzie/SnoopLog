@@ -31,10 +31,12 @@ class TierRouter:
             memory_entry = self._pattern_memory.lookup(event)
             if memory_entry is not None:
                 logger.info(
-                    "Suppressing previously benign log pattern for %s (seen_count=%s, suppressed_count=%s)",
-                    event.get("id"),
+                    "Suppressing known-benign pattern %s (seen=%s, suppressed=%s) | reason: %s | template: %s",
+                    event.get("id", "?")[:8],
                     memory_entry.get("seen_count"),
                     memory_entry.get("suppressed_count"),
+                    memory_entry.get("reason", "unknown"),
+                    (memory_entry.get("message_template") or "")[:80],
                 )
                 await bus.emit(
                     "log:suppressed",
@@ -50,9 +52,21 @@ class TierRouter:
             return
 
         if tier == "medium":
+            logger.info(
+                "MEDIUM tier log %s (score=%.3f) → batching for triage | %s",
+                event.get("id", "?")[:8],
+                pipeline_state.get("anomaly_score", 0),
+                (event.get("message") or "")[:80],
+            )
             await self._batcher.add(event)
             return
 
+        logger.warning(
+            "HIGH tier log %s (score=%.3f) → immediate investigation | %s",
+            event.get("id", "?")[:8],
+            pipeline_state.get("anomaly_score", 0),
+            (event.get("message") or "")[:80],
+        )
         await self._investigator.investigate(
             [event],
             reason="high anomaly score",

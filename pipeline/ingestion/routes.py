@@ -22,6 +22,10 @@ logger = logging.getLogger("snooplog.ingestion")
 
 router = APIRouter()
 
+# ── Stats counters ─────────────────────────────────────────────────────
+_stats = {"total": 0, "filtered": 0, "low": 0, "medium": 0, "high": 0}
+_STATS_INTERVAL = 10  # log summary every N events
+
 
 @router.post("/ingest")
 async def ingest_json(payload: dict[str, Any] | list[dict[str, Any]]):
@@ -72,6 +76,20 @@ def _process_log(raw: dict[str, Any] | str) -> LogEvent:
 
     # Non-blocking emit — cascade runs in background
     asyncio.create_task(bus.emit("log:scored", event_dict))
+
+    # ── Periodic stats ─────────────────────────────────────────────────
+    tier = event.pipeline.tier.value if event.pipeline.tier else "low"
+    _stats["total"] += 1
+    if event.pipeline.filtered:
+        _stats["filtered"] += 1
+    _stats[tier] = _stats.get(tier, 0) + 1
+    if _stats["total"] % _STATS_INTERVAL == 0:
+        logger.info(
+            "Pipeline stats — total=%d filtered=%d low=%d medium=%d high=%d ml_weight=%.0f%%",
+            _stats["total"], _stats["filtered"],
+            _stats.get("low", 0), _stats.get("medium", 0), _stats.get("high", 0),
+            ml_scorer.ml_weight * 100,
+        )
 
     return event
 

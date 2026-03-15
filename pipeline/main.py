@@ -26,6 +26,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger("snooplog.pipeline")
 
+
+# Silence noisy health-check access logs from uvicorn
+class _QuietAccessFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "GET /health" not in msg and "POST /api/ingest" not in msg
+
+logging.getLogger("uvicorn.access").addFilter(_QuietAccessFilter())
+
 app = FastAPI(title="SnoopLog Pipeline", version="0.1.0")
 
 # CORS — allow dashboard on Vercel and local dev
