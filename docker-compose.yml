@@ -29,15 +29,9 @@ services:
       - repo-data:/repo:ro
       - pipeline-data:/data
     environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL}
-      - OPENROUTER_TRIAGE_MODEL=${OPENROUTER_TRIAGE_MODEL}
-      - OPENROUTER_INVESTIGATION_MODEL=${OPENROUTER_INVESTIGATION_MODEL}
-      - KNOWN_LOG_TTL_SECONDS=${KNOWN_LOG_TTL_SECONDS}
-      - KNOWN_LOG_MAX_PATTERNS=${KNOWN_LOG_MAX_PATTERNS}
-      - KNOWN_LOG_BENIGN_MIN_REPEATS=${KNOWN_LOG_BENIGN_MIN_REPEATS}
-      - KNOWN_LOG_DB_PATH=${KNOWN_LOG_DB_PATH:-/data/known_patterns.db}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - KNOWN_LOG_DB_PATH=/data/known_patterns.db
       - REPO_PATH=/repo
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
     read_only: true
@@ -47,13 +41,8 @@ services:
       - ALL
     ports:
       - "3001:3001"
-    cap_add:
-      - CHOWN
-      - SETUID
-      - SETGID
     tmpfs:
       - /tmp
-      - /app/data
     deploy:
       resources:
         limits:
