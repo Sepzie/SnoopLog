@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+from typing import Any
 from urllib import request
 from urllib.error import HTTPError, URLError
-from typing import Any
 
+from shared.config import integration_discord_enabled
 logger = logging.getLogger("snooplog.integrations.discord")
 
 
@@ -20,13 +21,21 @@ class DiscordNotifier:
         import asyncio
 
         payload = build_discord_payload(data)
-        await asyncio.to_thread(post_discord_webhook, self.webhook_url, payload)
+        try:
+            await asyncio.to_thread(post_discord_webhook, self.webhook_url, payload)
+        except Exception:
+            logger.exception("Discord incident forwarding failed")
+            return
 
         logger.info("Incident forwarded to Discord")
 
 
 def configure_discord_integration() -> None:
     from shared.events import bus
+
+    if not integration_discord_enabled():
+        logger.info("Discord integration disabled in snooplog.yaml; skipping incident subscription")
+        return
 
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
     if not webhook_url:

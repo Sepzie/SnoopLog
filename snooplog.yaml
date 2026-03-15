@@ -28,3 +28,8 @@ filters:
 snapshots:
   backend: local       # local | gcs
   gcs_bucket: ""       # required when backend is gcs
+
+# Output integrations
+integrations:
+  discord:
+    enabled: false     # set true to forward incidents to DISCORD_WEBHOOK_URL

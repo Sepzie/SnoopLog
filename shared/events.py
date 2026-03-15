@@ -31,7 +31,10 @@ class EventBus:
         """Non-blocking: wraps async subscribers in create_task()."""
         for callback in self._subscribers.get(event_type, []):
             if asyncio.iscoroutinefunction(callback):
-                asyncio.create_task(callback(data))
+                asyncio.create_task(
+                    self._run_async_subscriber(event_type, callback, data),
+                    name=f"{event_type}:{self._callback_name(callback)}",
+                )
             else:
                 try:
                     callback(data)
@@ -54,6 +57,25 @@ class EventBus:
     def unregister_ws(self, ws: WebSocket) -> None:
         if ws in self._ws_clients:
             self._ws_clients.remove(ws)
+
+    async def _run_async_subscriber(
+        self,
+        event_type: str,
+        callback: Callable,
+        data: dict[str, Any],
+    ) -> None:
+        try:
+            await callback(data)
+        except Exception:
+            logger.exception(
+                "Async subscriber error for %s via %s",
+                event_type,
+                self._callback_name(callback),
+            )
+
+    @staticmethod
+    def _callback_name(callback: Callable) -> str:
+        return getattr(callback, "__qualname__", getattr(callback, "__name__", repr(callback)))
 
 
 # Singleton instance used across the pipeline
