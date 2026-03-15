@@ -27,9 +27,9 @@ jobs:
             exit 1
           fi
 
-          # Scheduled runs get 1 minute of quick-fire traffic; manual runs use the input duration
+          # Scheduled runs get 2 minutes; manual runs use the input duration
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            DURATION_MIN=1
+            DURATION_MIN=2
           else
             DURATION_MIN="${{ inputs.duration_minutes || '30' }}"
           fi
@@ -49,23 +49,18 @@ jobs:
             fi
           }
 
-          # Delay scales with duration: short runs get tight delays, long runs get organic gaps
+          # Random delay centered around ~10s: 2-20s range
           organic_delay() {
-            if [ "$DURATION_MIN" -le 2 ]; then
-              # Quick batch mode: 1-4s between requests
-              echo $(( RANDOM % 4 + 1 ))
-              return
-            fi
             local roll=$((RANDOM % 100))
-            if [ $roll -lt 15 ]; then
-              # 15% chance of a burst (short delay)
-              echo $(( RANDOM % 6 + 3 ))
-            elif [ $roll -lt 40 ]; then
-              # 25% chance of moderate gap
-              echo $(( RANDOM % 16 + 15 ))
+            if [ $roll -lt 20 ]; then
+              # 20% chance of quick burst (2-5s)
+              echo $(( RANDOM % 4 + 2 ))
+            elif [ $roll -lt 70 ]; then
+              # 50% chance of normal pace (7-13s)
+              echo $(( RANDOM % 7 + 7 ))
             else
-              # 60% chance of longer gap
-              echo $(( RANDOM % 51 + 30 ))
+              # 30% chance of slightly longer gap (14-20s)
+              echo $(( RANDOM % 7 + 14 ))
             fi
           }
 
@@ -79,7 +74,6 @@ jobs:
             ACTION=$(pick_action)
             REQUEST_NUM=$((REQUEST_NUM + 1))
             ELAPSED=$(( ( $(date +%s) - END_TIME + DURATION_MIN * 60 ) / 60 ))
-            REMAINING=$(( (END_TIME - $(date +%s)) / 60 ))
 
             case "$ACTION" in
               browse)
