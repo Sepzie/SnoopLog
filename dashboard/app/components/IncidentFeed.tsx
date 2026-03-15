@@ -4,25 +4,36 @@ import { useMemo } from "react";
 import { IncidentCard } from "./IncidentCard";
 import { useLiveData } from "./live-data";
 
-export function IncidentFeed() {
+type IncidentFeedProps = {
+  onSelectIncident: (id: string) => void;
+};
+
+export function IncidentFeed({ onSelectIncident }: IncidentFeedProps) {
   const { incidents } = useLiveData();
 
   const incidentCards = useMemo(() => {
-    return incidents.map((incident) => {
-      return <IncidentCard key={incident.id} incident={incident} />;
-    });
-  }, [incidents]);
+    return incidents.map((incident) => (
+      <IncidentCard
+        key={incident.id}
+        incident={incident}
+        onSelect={onSelectIncident}
+      />
+    ));
+  }, [incidents, onSelectIncident]);
 
   if (incidents.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-amber-200 bg-white/60 p-4 text-xs text-slate-500">
-        Nothing to report...
+      <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-black/8 bg-white/60 p-6">
+        <p className="text-sm text-[var(--muted)]">
+          No escalations yet. Incidents will appear here when the agent
+          identifies issues.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="agent-scroll h-full space-y-3 overflow-y-auto pr-1">
+    <div className="agent-scroll h-full space-y-2 overflow-y-auto pr-1">
       {incidentCards}
     </div>
   );

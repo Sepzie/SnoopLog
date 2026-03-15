@@ -12,13 +12,6 @@ export function ConnectionStatus() {
         ? "bg-amber-400"
         : "bg-red-400";
 
-  const textClass =
-    state === "connected"
-      ? "text-emerald-300"
-      : state === "checking"
-        ? "text-amber-300"
-        : "text-red-300";
-
   const label =
     state === "connected"
       ? "Connected"
@@ -27,12 +20,14 @@ export function ConnectionStatus() {
         : "Disconnected";
 
   return (
-    <div
+    <span
       title={lastError ?? undefined}
-      className={`inline-flex items-center gap-2 rounded-full border border-amber-200/70 bg-white/70 px-3 py-2 text-sm shadow-sm ${textClass}`}
+      className="inline-flex items-center gap-1.5 text-xs text-[var(--muted)]"
     >
-      <span className={`h-2.5 w-2.5 rounded-full shadow-[0_0_14px_currentColor] ${dotClass}`} />
-      <span className="font-medium tracking-wide">{label}</span>
-    </div>
+      <span
+        className={`h-2 w-2 rounded-full ${dotClass}`}
+      />
+      <span className="font-medium">{label}</span>
+    </span>
   );
 }

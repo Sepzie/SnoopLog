@@ -40,6 +40,10 @@ export type AgentCallItem = {
   id: string;
   timestamp: string;
   command: string;
+  toolName: string;
+  args: string;
+  result: string;
+  ok: boolean;
 };
 
 type StatsState = {
@@ -273,11 +277,16 @@ function normalizeAgentCall(data: unknown): AgentCallItem | null {
     ? `${truncate(baseCommand)} -> ${truncate(resultText, 90)}`
     : truncate(baseCommand);
   const timestamp = String(record.timestamp ?? new Date().toISOString());
+  const ok = record.ok !== undefined ? Boolean(record.ok) : !String(resultRaw ?? "").startsWith("Tool failed:");
 
   return {
     id: String(record.id ?? `${timestamp}-${Math.random()}`),
     timestamp,
     command,
+    toolName,
+    args,
+    result: typeof resultRaw === "string" ? resultRaw : stringifyArgs(resultRaw),
+    ok,
   };
 }
 
@@ -328,6 +337,10 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
           id: call.id,
           timestamp: call.timestamp,
           command: call.command,
+          toolName: call.toolName,
+          args: call.args,
+          result: call.result,
+          ok: call.ok,
         }))
       : [],
   );
@@ -382,7 +395,7 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
       const stopAgent = startMockAgentCallStream((call) => {
         setAgentCalls((prev) => [
           ...prev,
-          { id: call.id, timestamp: call.timestamp, command: call.command },
+          { id: call.id, timestamp: call.timestamp, command: call.command, toolName: call.toolName, args: call.args, result: call.result, ok: call.ok },
         ].slice(-MAX_AGENT_CALLS));
         setStats((prev) => ({ ...prev, toolCalls: prev.toolCalls + 1 }));
       });

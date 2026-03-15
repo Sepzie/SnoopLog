@@ -1,48 +1,58 @@
 "use client";
 
+import { useMemo } from "react";
 import { useLiveData } from "./live-data";
+import { AgentStatusCard } from "./AgentStatusCard";
 
-const statConfig: Array<{
-  key:
-    | "logsScored"
-    | "triagedBatches"
-    | "incidentsRaised"
-    | "toolCalls"
-    | "logsSuppressed";
-  label: string;
-  note: string;
-}> = [
-  { key: "logsScored", label: "Logs Scored", note: "" },
-  { key: "triagedBatches", label: "Batches Triaged", note: "" },
-  { key: "incidentsRaised", label: "Incidents Raised", note: "" },
-  { key: "toolCalls", label: "Tool Calls", note: "" },
-  { key: "logsSuppressed", label: "Logs Suppressed", note: "" },
-];
+type LiveStatsProps = {
+  onOpenAgentTrail: () => void;
+};
 
-export function LiveStats() {
-  const { stats } = useLiveData();
+export function LiveStats({ onOpenAgentTrail }: LiveStatsProps) {
+  const { logs, incidents } = useLiveData();
+
+  const { recentLogs, recentAnomalies, recentEscalations } = useMemo(() => {
+    const cutoff = Date.now() - 86_400_000;
+    let logCount = 0;
+    let anomalyCount = 0;
+    for (const log of logs) {
+      if (log.timestamp && new Date(log.timestamp).getTime() > cutoff) {
+        logCount++;
+        if (log.pipeline?.tier === "high") anomalyCount++;
+      }
+    }
+    const escCount = incidents.filter(
+      (inc) => new Date(inc.timestamp).getTime() > cutoff,
+    ).length;
+
+    return {
+      recentLogs: logCount,
+      recentAnomalies: anomalyCount,
+      recentEscalations: escCount,
+    };
+  }, [logs, incidents]);
+
+  const stats = [
+    { label: "Logs", value: recentLogs, sub: "recent" },
+    { label: "Anomalies", value: recentAnomalies, sub: "recent" },
+    { label: "Escalations", value: recentEscalations, sub: "recent" },
+  ];
 
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-      {statConfig.map((stat) => (
+    <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      {stats.map((stat) => (
         <div
-          key={stat.key}
+          key={stat.label}
           className="rounded-2xl border border-black/8 bg-white px-4 py-4 shadow-[0_8px_30px_rgba(20,20,20,0.04)]"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm text-[#666372]">{stat.label}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[#262330]">
-                {stats[stat.key].toLocaleString()}
-              </p>
-            </div>
-            <span className="rounded-full bg-[#f4f7ff] px-2 py-1 text-xs font-medium text-[#5c67c7]">
-              live
-            </span>
-          </div>
-          <p className="mt-3 text-xs text-[#8d8a98]">{stat.note}</p>
+          <p className="text-sm text-[#666372]">{stat.label}</p>
+          <p className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[#262330]">
+            {stat.value.toLocaleString()}
+          </p>
+          <p className="mt-1 text-[11px] text-[var(--muted)]">{stat.sub}</p>
         </div>
       ))}
+      <AgentStatusCard onOpenTrail={onOpenAgentTrail} />
     </section>
   );
 }

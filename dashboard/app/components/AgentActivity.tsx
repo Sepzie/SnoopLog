@@ -4,7 +4,11 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { AgentCall } from "./AgentCall";
 import { useLiveData } from "./live-data";
 
-export function AgentActivity() {
+type AgentActivityProps = {
+  mode?: "compact" | "full";
+};
+
+export function AgentActivity({ mode = "compact" }: AgentActivityProps) {
   const { agentCalls: calls } = useLiveData();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [stickToBottom, setStickToBottom] = useState(true);
@@ -18,10 +22,23 @@ export function AgentActivity() {
   }, [calls, stickToBottom]);
 
   const renderedCalls = useMemo(() => {
+    if (mode === "full") {
+      return calls.map((call) => (
+        <AgentCall
+          key={call.id}
+          command={call.command}
+          toolName={call.toolName}
+          args={call.args}
+          result={call.result}
+          ok={call.ok}
+          full
+        />
+      ));
+    }
     return calls.map((call) => (
       <AgentCall key={call.id} command={call.command} />
     ));
-  }, [calls]);
+  }, [calls, mode]);
 
   const onScroll = () => {
     if (!scrollContainerRef.current) {
@@ -46,9 +63,13 @@ export function AgentActivity() {
     <div
       ref={scrollContainerRef}
       onScroll={onScroll}
-      className="agent-scroll min-h-[18vh] max-h-[24vh] overflow-y-auto pr-1 font-mono text-xs"
+      className={`agent-scroll overflow-y-auto pr-1 font-mono text-xs ${
+        mode === "full" ? "max-h-full" : "min-h-[18vh] max-h-[24vh]"
+      }`}
     >
-      <div className="space-y-1">{renderedCalls}</div>
+      <div className={mode === "full" ? "space-y-2" : "space-y-1"}>
+        {renderedCalls}
+      </div>
     </div>
   );
 }

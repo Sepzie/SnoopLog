@@ -59,8 +59,8 @@ def build_tool_call_event_payload(
         "args": tool_args,
         "ok": not result.startswith("Tool failed:"),
         "summary": summary,
-        "result": result[:600],
-        "result_preview": result[:600],
+        "result": result,
+        "result_preview": result[:200],
         "related_log_ids": log_ids,
     }
 

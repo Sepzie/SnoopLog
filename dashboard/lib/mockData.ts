@@ -28,6 +28,10 @@ export type MockAgentCall = {
   id: string;
   timestamp: string;
   command: string;
+  toolName: string;
+  args: string;
+  result: string;
+  ok: boolean;
 };
 
 const INFO_MESSAGES = [
@@ -51,12 +55,32 @@ const ERROR_MESSAGES = [
   "Webhook delivery failed after retries",
 ];
 
-const AGENT_COMMANDS = [
-  'search_logs --query "payment timeout" --limit 50',
-  "grep_code --pattern \"createPaymentIntent\" --file_glob \"*.ts\"",
-  "read_file --path services/payment/client.ts --start_line 70 --end_line 110",
-  "git_blame --path services/payment/client.ts --start_line 88 --end_line 88",
-  "report_incident --severity high --confidence 0.93",
+const AGENT_TOOL_CALLS = [
+  {
+    toolName: "search_logs",
+    args: '{"query": "payment timeout", "limit": 50}',
+    result: '{"matches": 12, "summary": "Found 12 payment timeout errors in the last hour, primarily from checkout-service. Peak at 14:32 UTC."}',
+  },
+  {
+    toolName: "grep_code",
+    args: '{"pattern": "createPaymentIntent", "file_glob": "*.ts"}',
+    result: 'services/payment/client.ts:88:  const intent = await createPaymentIntent(amount, currency);\nservices/payment/client.ts:142:  // createPaymentIntent wrapper with no timeout\nservices/checkout/handler.ts:55:  const result = await paymentClient.createPaymentIntent(order.total, order.currency);',
+  },
+  {
+    toolName: "read_file",
+    args: '{"path": "services/payment/client.ts", "start_line": 70, "end_line": 110}',
+    result: '70: export class PaymentClient {\n71:   private stripe: Stripe;\n72: \n73:   constructor(apiKey: string) {\n74:     this.stripe = new Stripe(apiKey);\n75:   }\n76: \n77:   async createPaymentIntent(amount: number, currency: string) {\n78:     // No timeout configured - this can hang indefinitely\n79:     const intent = await this.stripe.paymentIntents.create({\n80:       amount,\n81:       currency,\n82:       automatic_payment_methods: { enabled: true },\n83:     });\n84:     return intent;\n85:   }',
+  },
+  {
+    toolName: "git_blame",
+    args: '{"path": "services/payment/client.ts", "start_line": 88, "end_line": 88}',
+    result: 'a3f2c91d (dev-jane 2025-11-03 09:14:22 +0000 88)     const intent = await this.stripe.paymentIntents.create({',
+  },
+  {
+    toolName: "report_incident",
+    args: '{"severity": "high", "confidence": 0.93}',
+    result: '{"status": "created", "incident_id": "INC-2847", "summary": "Payment timeout causing checkout failures"}',
+  },
 ];
 
 function randomBetween(min: number, max: number): number {
@@ -147,10 +171,16 @@ export function createMockIncident(): MockIncident {
 }
 
 export function createMockAgentCall(): MockAgentCall {
+  const tool = pick(AGENT_TOOL_CALLS);
+  const command = `${tool.toolName} ${tool.args} -> ${tool.result.slice(0, 90)}...`;
   return {
     id: crypto.randomUUID(),
     timestamp: new Date().toISOString(),
-    command: pick(AGENT_COMMANDS),
+    command,
+    toolName: tool.toolName,
+    args: tool.args,
+    result: tool.result,
+    ok: true,
   };
 }
 

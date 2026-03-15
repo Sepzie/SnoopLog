@@ -15,14 +15,10 @@ type LogRowProps = {
   log: LogEvent;
 };
 
-function scoreBarColor(score: number): string {
-  if (score >= 0.7) {
-    return "bg-rose-400";
-  }
-  if (score >= 0.3) {
-    return "bg-amber-300";
-  }
-  return "bg-emerald-300";
+function accentBorder(score: number): string {
+  if (score >= 0.7) return "border-l-rose-400";
+  if (score >= 0.3) return "border-l-amber-300";
+  return "border-l-emerald-300";
 }
 
 function levelBadge(level: string): string {
@@ -40,24 +36,22 @@ export function LogRow({ log }: LogRowProps) {
     ? new Date(log.timestamp).toLocaleTimeString()
     : "unknown";
   const level = (log.level ?? "info").toUpperCase();
-  const tier = (log.pipeline?.tier ?? "low").toUpperCase();
   const score = Number(log.pipeline?.anomaly_score ?? 0);
-  const width = `${Math.round(Math.max(0, Math.min(1, score)) * 100)}%`;
 
   return (
-    <div className="rounded-2xl border border-amber-100 bg-white/78 p-3 shadow-[0_12px_24px_rgba(247,196,102,0.08)] transition hover:border-amber-200 hover:bg-white">
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-        <span>{timestamp}</span>
-        <span className={`rounded px-1.5 py-0.5 font-semibold ${levelBadge(level)}`}>
+    <div
+      className={`rounded-lg border border-black/4 border-l-[3px] ${accentBorder(score)} bg-white/80 px-3 py-2 transition hover:bg-white`}
+    >
+      <div className="flex items-center gap-2 text-[11px]">
+        <span className="text-[var(--muted)]">{timestamp}</span>
+        <span
+          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${levelBadge(level)}`}
+        >
           {level}
         </span>
-        <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-slate-700">
-          {tier}
+        <span className="min-w-0 flex-1 truncate text-[#4d4a57]">
+          {log.message ?? "(no message)"}
         </span>
-      </div>
-      <p className="truncate text-sm text-slate-700">{log.message ?? "(no message)"}</p>
-      <div className="mt-3 h-1.5 rounded-full bg-amber-100">
-        <div className={`h-1.5 rounded ${scoreBarColor(score)}`} style={{ width }} />
       </div>
     </div>
   );
