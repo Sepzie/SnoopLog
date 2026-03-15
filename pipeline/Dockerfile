@@ -26,6 +26,6 @@ EXPOSE 3001
 # Clone repo at startup (for agent tool calls), then launch uvicorn
 CMD ["sh", "-c", "\
   if [ -n \"$REPO_URL\" ] && [ ! -d /repo/.git ]; then \
-    echo 'Cloning repo...' && git clone --depth=1 \"$REPO_URL\" /repo 2>/dev/null || echo 'Repo clone failed (non-fatal)'; \
+    echo 'Cloning repo...' && git clone \"$REPO_URL\" /repo 2>/dev/null || echo 'Repo clone failed (non-fatal)'; \
   fi && \
   exec uvicorn pipeline.main:app --host 0.0.0.0 --port 3001"]

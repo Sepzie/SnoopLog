@@ -17,6 +17,9 @@ services:
     build:
       context: .
       dockerfile: pipeline/Dockerfile
+    depends_on:
+      repo-init:
+        condition: service_completed_successfully
     expose:
       - "3001"
     ports:
