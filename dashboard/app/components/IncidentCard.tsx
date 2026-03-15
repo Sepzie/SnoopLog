@@ -1,10 +1,7 @@
-export type IncidentFeedItem = {
-  id: string;
-  timestamp: string;
-  severity: string;
-  summary: string;
-  firstCodeRef: string;
-};
+"use client";
+
+import { IncidentDetail } from "./IncidentDetail";
+import type { IncidentFeedItem } from "./incidentTypes";
 
 type IncidentCardProps = {
   incident: IncidentFeedItem;
@@ -26,9 +23,20 @@ function severityClasses(severity: string): string {
 
 export function IncidentCard({ incident }: IncidentCardProps) {
   const timestamp = new Date(incident.timestamp).toLocaleTimeString();
+  const handleToggle = (event: React.SyntheticEvent<HTMLDetailsElement>) => {
+    if (!event.currentTarget.open) {
+      return;
+    }
+
+    event.currentTarget.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  };
 
   return (
     <details
+      onToggle={handleToggle}
       className={`group w-full rounded border-l-4 p-3 text-left text-sm transition ${severityClasses(incident.severity)}`}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold">
@@ -53,7 +61,7 @@ export function IncidentCard({ incident }: IncidentCardProps) {
       <p className="mt-1 text-xs opacity-80">
         {timestamp} | First code ref: `{incident.firstCodeRef}`
       </p>
-      <div className="mt-2 text-sm font-medium">Hello world</div>
+      <IncidentDetail incident={incident} />
     </details>
   );
 }

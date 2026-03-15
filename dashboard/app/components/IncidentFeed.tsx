@@ -5,7 +5,8 @@ import {
   createInitialMockIncidents,
   startMockIncidentStream,
 } from "@/lib/mockData";
-import { IncidentCard, IncidentFeedItem } from "./IncidentCard";
+import { IncidentCard } from "./IncidentCard";
+import type { IncidentCodeRef, IncidentFeedItem } from "./incidentTypes";
 
 const MAX_INCIDENTS_TO_DISPLAY = 50;
 
@@ -23,22 +24,56 @@ function normalizeIncident(data: unknown): IncidentFeedItem | null {
   const codeRefs = (record.code_refs ?? record.codeRefs ?? []) as Array<
     Record<string, unknown>
   >;
+  const normalizedCodeRefs: IncidentCodeRef[] = Array.isArray(codeRefs)
+    ? codeRefs.map((ref) => ({
+        file: String(ref.file ?? "unknown"),
+        line:
+          typeof ref.line === "number"
+            ? ref.line
+            : ref.line
+              ? Number(ref.line)
+              : undefined,
+        blame: typeof ref.blame === "string" ? ref.blame : undefined,
+        snippet: typeof ref.snippet === "string" ? ref.snippet : undefined,
+      }))
+    : [];
   const firstRef =
-    Array.isArray(codeRefs) && codeRefs.length > 0
-      ? `${String(codeRefs[0].file ?? "unknown")}:${String(codeRefs[0].line ?? "?")}`
+    normalizedCodeRefs.length > 0
+      ? `${normalizedCodeRefs[0].file}:${normalizedCodeRefs[0].line ?? "?"}`
       : "unknown";
 
   const summary =
     record.report ?? record.summary ?? "Incident reported (summary pending)";
 
   const severity = String(record.severity ?? "medium");
+  const reasoningStepsRaw = (record.reasoning_chain ??
+    record.reasoningSteps ??
+    []) as unknown[];
+  const reasoningSteps = Array.isArray(reasoningStepsRaw)
+    ? reasoningStepsRaw.map((step) => String(step))
+    : [];
 
   return {
     id: String(record.id ?? `${Date.now()}-${Math.random()}`),
     timestamp: String(record.timestamp ?? new Date().toISOString()),
     severity,
     summary: String(summary),
+    report: typeof record.report === "string" ? record.report : undefined,
+    rootCause:
+      typeof record.root_cause === "string"
+        ? record.root_cause
+        : typeof record.rootCause === "string"
+          ? record.rootCause
+          : undefined,
+    suggestedFix:
+      typeof record.suggested_fix === "string"
+        ? record.suggested_fix
+        : typeof record.suggestedFix === "string"
+          ? record.suggestedFix
+          : undefined,
+    codeRefs: normalizedCodeRefs,
     firstCodeRef: firstRef,
+    reasoningSteps,
   };
 }
 
@@ -51,9 +86,18 @@ export function IncidentFeed() {
           timestamp: incident.timestamp,
           severity: incident.severity,
           summary: incident.summary,
+          report: incident.summary,
+          rootCause: incident.rootCause,
+          suggestedFix: incident.suggestedFix,
+          codeRefs: incident.codeRefs,
           firstCodeRef: incident.codeRefs[0]
             ? `${incident.codeRefs[0].file}:${incident.codeRefs[0].line}`
             : "unknown",
+          reasoningSteps: [
+            'search_logs(query="checkout timeout")',
+            'git_blame(file="services/payment/client.ts", line=88)',
+            'report_incident(severity="high")',
+          ],
         }))
       : [],
   );
@@ -68,9 +112,18 @@ export function IncidentFeed() {
               timestamp: incident.timestamp,
               severity: incident.severity,
               summary: incident.summary,
+              report: incident.summary,
+              rootCause: incident.rootCause,
+              suggestedFix: incident.suggestedFix,
+              codeRefs: incident.codeRefs,
               firstCodeRef: incident.codeRefs[0]
                 ? `${incident.codeRefs[0].file}:${incident.codeRefs[0].line}`
                 : "unknown",
+              reasoningSteps: [
+                'search_logs(query="checkout timeout")',
+                'git_blame(file="services/payment/client.ts", line=88)',
+                'report_incident(severity="high")',
+              ],
             },
             ...prev,
           ].slice(0, MAX_INCIDENTS_TO_DISPLAY),
@@ -146,7 +199,7 @@ export function IncidentFeed() {
   }
 
   return (
-    <div className="max-h-[28vh] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
+    <div className="h-full space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
       {incidentCards}
     </div>
   );

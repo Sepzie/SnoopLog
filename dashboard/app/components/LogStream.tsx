@@ -119,7 +119,7 @@ export function LogStream() {
     <div
       ref={scrollContainerRef}
       onScroll={onScroll}
-      className="max-h-[62vh] overflow-y-auto pr-1 font-mono text-xs [scrollbar-width:thin]"
+      className="h-full overflow-y-auto pr-1 font-mono text-xs [scrollbar-width:thin]"
     >
       <div className="space-y-2">{renderedRows}</div>
     </div>

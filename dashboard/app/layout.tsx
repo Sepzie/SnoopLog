@@ -38,53 +38,25 @@ export default function RootLayout({
 
           <main className="mx-auto grid w-full max-w-[1400px] grid-rows-[1fr_auto] gap-4 px-4 py-4 md:px-6">
             <section className="grid min-h-[60vh] grid-cols-1 gap-4 lg:grid-cols-[1.15fr_1fr]">
-              <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+              <article className="flex h-[62vh] min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">
                   Log Stream
                 </h2>
-                <LogStream />
+                <div className="min-h-0 flex-1">
+                  <LogStream />
+                </div>
               </article>
 
-              <article className="grid grid-rows-[auto_1fr] gap-4">
-                <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+              <article className="flex h-[62vh] min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                   <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-600">
                     Incident Feed
                   </h2>
-                  <IncidentFeed />
-                </div>
-
-                <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                  <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-600">
-                    Incident Detail
-                  </h2>
-                  <div className="space-y-3 text-sm">
-                    <div className="rounded bg-slate-100 p-2">
-                      Timeout spike traced to payment provider retries
-                      saturating worker pool.
-                    </div>
-                    <div className="rounded bg-red-50 p-2 text-red-800">
-                      Root cause: no request timeout guard on
-                      `createPaymentIntent`.
-                    </div>
-                    <div className="rounded bg-slate-900 p-2 font-mono text-xs text-slate-100">
-                      services/payment/client.ts:88
-                      <br />
-                      blame: b4a9e3f - &quot;add retry helper&quot; (2 days ago)
-                    </div>
-                    <div className="rounded bg-emerald-50 p-2 text-emerald-800">
-                      Suggested fix: apply 3s timeout + jittered backoff +
-                      circuit breaker.
-                    </div>
-                    <div className="rounded border border-slate-200 bg-slate-50 p-2 font-mono text-xs">
-                      1. search_logs(query=&quot;timeout checkout&quot;)
-                      <br />
-                      2. git_blame(file=&quot;services/payment/client.ts&quot;,
-                      line=88)
-                      <br />
-                      3. report_incident(severity=&quot;high&quot;)
-                    </div>
+                  <p className="mb-2 text-sm text-slate-500">
+                    Expand an incident card above to view its full detail.
+                  </p>
+                  <div className="min-h-0 flex-1">
+                    <IncidentFeed />
                   </div>
-                </div>
               </article>
             </section>
 
