@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useState } from "react";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { IncidentFeed } from "./components/IncidentFeed";
@@ -53,8 +54,15 @@ function DashboardContent() {
       <div className="border-b border-black/6 bg-white">
         <div className="mx-auto flex max-w-[1520px] items-center justify-between gap-4 px-5 py-3.5 md:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-[#f8f8f5] text-sm font-semibold text-[#111111]">
-              SL
+            <div className="overflow-hidden rounded-xl border border-black/10 bg-[#f8f8f5] shadow-sm">
+              <Image
+                src="/logo.svg"
+                alt="SnoopLog logo"
+                width={36}
+                height={36}
+                priority
+                className="h-9 w-9 object-contain"
+              />
             </div>
             <div>
               <h1
