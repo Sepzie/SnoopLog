@@ -49,7 +49,10 @@ export function LogStream() {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data) as BusMessage;
-          if (msg.type !== "log:scored" || !msg.data) {
+          if (
+            ["log:scored", "log:triaged"].includes("" + msg.type) ||
+            !msg.data
+          ) {
             return;
           }
           setLogs((prev) =>
