@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AgentActivity } from "./components/AgentActivity";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { LogStream } from "./components/LogStream";
 import { IncidentFeed } from "./components/IncidentFeed";
@@ -64,20 +65,7 @@ export default function RootLayout({
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-300">
                 Agent Activity
               </h2>
-              <div className="space-y-1 font-mono text-xs">
-                <p>
-                  <span className="text-emerald-300">$</span> search_logs
-                  --query &quot;payment timeout&quot; --limit 50
-                </p>
-                <p>
-                  <span className="text-emerald-300">$</span> git_blame --file
-                  services/payment/client.ts --line 88
-                </p>
-                <p>
-                  <span className="text-emerald-300">$</span> report_incident
-                  --severity high --confidence 0.93
-                </p>
-              </div>
+              <AgentActivity />
             </section>
           </main>
           <div className="hidden">{children}</div>

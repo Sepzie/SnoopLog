@@ -24,6 +24,12 @@ export type MockIncident = {
   suggestedFix: string;
 };
 
+export type MockAgentCall = {
+  id: string;
+  timestamp: string;
+  command: string;
+};
+
 const INFO_MESSAGES = [
   "GET /api/products 200 in 38ms",
   "Cache hit for catalog:featured",
@@ -43,6 +49,14 @@ const ERROR_MESSAGES = [
   "Unhandled exception in order processor",
   "Database write failed: deadlock detected",
   "Webhook delivery failed after retries",
+];
+
+const AGENT_COMMANDS = [
+  'search_logs --query "payment timeout" --limit 50',
+  "grep_code --pattern \"createPaymentIntent\" --file_glob \"*.ts\"",
+  "read_file --path services/payment/client.ts --start_line 70 --end_line 110",
+  "git_blame --path services/payment/client.ts --start_line 88 --end_line 88",
+  "report_incident --severity high --confidence 0.93",
 ];
 
 function randomBetween(min: number, max: number): number {
@@ -132,8 +146,22 @@ export function createMockIncident(): MockIncident {
   };
 }
 
+export function createMockAgentCall(): MockAgentCall {
+  return {
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    command: pick(AGENT_COMMANDS),
+  };
+}
+
 export function createInitialMockIncidents(count = 2): MockIncident[] {
   return Array.from({ length: count }, () => createMockIncident()).sort(
+    (a, b) => b.timestamp.localeCompare(a.timestamp),
+  );
+}
+
+export function createInitialMockAgentCalls(count = 5): MockAgentCall[] {
+  return Array.from({ length: count }, () => createMockAgentCall()).sort(
     (a, b) => b.timestamp.localeCompare(a.timestamp),
   );
 }
@@ -155,6 +183,17 @@ export function startMockIncidentStream(
 ): () => void {
   const timer = setInterval(() => {
     onIncident(createMockIncident());
+  }, intervalMs);
+
+  return () => clearInterval(timer);
+}
+
+export function startMockAgentCallStream(
+  onCall: (call: MockAgentCall) => void,
+  intervalMs = 5000,
+): () => void {
+  const timer = setInterval(() => {
+    onCall(createMockAgentCall());
   }, intervalMs);
 
   return () => clearInterval(timer);
