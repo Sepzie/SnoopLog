@@ -7,6 +7,9 @@ import { IncidentFeed } from "./components/IncidentFeed";
 import { LiveDataProvider, useLiveData } from "./components/live-data";
 import { LiveStats } from "./components/LiveStats";
 import { LogStream } from "./components/LogStream";
+import { Pirata_One } from "next/font/google";
+
+const myfont = Pirata_One({ subsets: ["latin"], weight: "400" });
 
 type ViewMode = "overview" | "pipeline";
 
@@ -48,7 +51,8 @@ function SectionTabs({
 function DashboardContent() {
   const usingMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
   const [activeView, setActiveView] = useState<ViewMode>("overview");
-  const { connectionState, lastError, stats, incidents, agentCalls } = useLiveData();
+  const { connectionState, lastError, stats, incidents, agentCalls } =
+    useLiveData();
   const latestIncident = incidents[0];
   const latestAgentCall = agentCalls[agentCalls.length - 1];
   const latestIncidentSummary = latestIncident
@@ -75,7 +79,12 @@ function DashboardContent() {
                   SL
                 </div>
                 <div>
-                  <h1 className="text-3xl font-semibold tracking-[-0.03em]">
+                  <h1
+                    className={
+                      "text-3xl font-semibold tracking-[-0.03em] " +
+                      myfont.className
+                    }
+                  >
                     SnoopLog
                   </h1>
                   <p className="mt-1 text-sm text-[var(--muted)]">
@@ -111,14 +120,20 @@ function DashboardContent() {
               <p className="text-[11px] uppercase tracking-[0.16em] text-[#9a98a3]">
                 Latest Incident
               </p>
-              <p className="mt-1 text-sm font-medium text-[#2b2735]">{latestIncidentSummary}</p>
-              <p className="mt-1 text-sm text-[#4d4a57]">{latestIncidentDetail}</p>
+              <p className="mt-1 text-sm font-medium text-[#2b2735]">
+                {latestIncidentSummary}
+              </p>
+              <p className="mt-1 text-sm text-[#4d4a57]">
+                {latestIncidentDetail}
+              </p>
             </div>
             <div className="rounded-xl border border-black/10 bg-[#fbfbf8] px-4 py-3 shadow-[0_1px_0_rgba(255,255,255,0.7)]">
               <p className="text-[11px] uppercase tracking-[0.16em] text-[#9a98a3]">
                 Latest Agent Step
               </p>
-              <p className="mt-1 truncate text-sm font-medium text-[#2b2735]">{latestAgentSummary}</p>
+              <p className="mt-1 truncate text-sm font-medium text-[#2b2735]">
+                {latestAgentSummary}
+              </p>
               <p className="mt-1 text-sm text-[#4d4a57]">{latestAgentDetail}</p>
             </div>
           </div>
@@ -127,12 +142,17 @@ function DashboardContent() {
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <div className="font-medium">Live stream not connected.</div>
               <p className="mt-1 text-amber-800">
-                Start the pipeline with <span className="font-mono">docker compose up --build pipeline caddy</span>,
-                then run the dashboard without overriding the websocket URL so it
-                uses the direct local pipeline socket.
+                Start the pipeline with{" "}
+                <span className="font-mono">
+                  docker compose up --build pipeline caddy
+                </span>
+                , then run the dashboard without overriding the websocket URL so
+                it uses the direct local pipeline socket.
               </p>
               {lastError ? (
-                <p className="mt-2 font-mono text-xs text-amber-700">{lastError}</p>
+                <p className="mt-2 font-mono text-xs text-amber-700">
+                  {lastError}
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -218,7 +238,8 @@ function DashboardContent() {
                   Batches triaged
                 </h2>
                 <p className="mt-2 text-sm text-[#6b6b7a]">
-                  Medium anomalies are grouped and classified as benign or escalated.
+                  Medium anomalies are grouped and classified as benign or
+                  escalated.
                 </p>
                 <p className="mt-4 text-4xl font-semibold text-[#262330]">
                   {stats.triagedBatches}
@@ -233,7 +254,8 @@ function DashboardContent() {
                   Agent tools used
                 </h2>
                 <p className="mt-2 text-sm text-[#6b6b7a]">
-                  Investigations call repo and log tools before reporting incidents.
+                  Investigations call repo and log tools before reporting
+                  incidents.
                 </p>
                 <p className="mt-4 text-4xl font-semibold text-[#262330]">
                   {stats.toolCalls}
@@ -248,7 +270,8 @@ function DashboardContent() {
                   Incidents created
                 </h2>
                 <p className="mt-2 text-sm text-[#6b6b7a]">
-                  Final reports carry the summary, root cause, code refs, and fix.
+                  Final reports carry the summary, root cause, code refs, and
+                  fix.
                 </p>
                 <p className="mt-4 text-4xl font-semibold text-[#262330]">
                   {stats.incidentsRaised}
@@ -270,7 +293,9 @@ function DashboardContent() {
               <article className="rounded-3xl border border-black/8 bg-[#fcfcfa] p-5 shadow-[0_12px_40px_rgba(20,20,20,0.05)]">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm text-[#777482]">Investigation trail</p>
+                    <p className="text-sm text-[#777482]">
+                      Investigation trail
+                    </p>
                     <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#2b2735]">
                       Agent steps
                     </h2>
