@@ -8,6 +8,7 @@ import { AgentTrailSidePanel } from "./components/AgentTrailSidePanel";
 import { LiveDataProvider, useLiveData } from "./components/live-data";
 import { LiveStats } from "./components/LiveStats";
 import { LogStream } from "./components/LogStream";
+import { resetFirestore } from "@/lib/firestore-reset";
 import { Pirata_One } from "next/font/google";
 
 const myfont = Pirata_One({ subsets: ["latin"], weight: "400" });
@@ -21,6 +22,20 @@ function DashboardContent() {
   const usingMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
   const { connectionState, lastError } = useLiveData();
   const [panel, setPanel] = useState<PanelState>({ kind: "closed" });
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = useCallback(async () => {
+    if (!confirm("Wipe all data from Firebase? This cannot be undone.")) return;
+    setResetting(true);
+    try {
+      await resetFirestore();
+      window.location.reload();
+    } catch (err) {
+      console.error("Reset failed:", err);
+      alert("Reset failed — check the console for details.");
+      setResetting(false);
+    }
+  }, []);
 
   const closePanel = useCallback(() => setPanel({ kind: "closed" }), []);
   const openIncident = useCallback(
@@ -62,6 +77,16 @@ function DashboardContent() {
             <span className="rounded-full bg-[#f4f7ff] px-2.5 py-1 text-[11px] font-medium text-[#5c67c7]">
               {usingMockData ? "Mock" : "Live"}
             </span>
+            {!usingMockData && (
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={resetting}
+                className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-medium text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-50"
+              >
+                {resetting ? "Wiping..." : "Reset DB"}
+              </button>
+            )}
           </div>
         </div>
       </div>
