@@ -49,13 +49,7 @@ def configure_discord_integration() -> None:
 
 def build_discord_payload(event: dict[str, Any] | Any) -> dict[str, Any]:
     normalized = _normalize_event(event)
-    incident = normalized.get("incident") or {
-        "report": "SnoopLog incident detected",
-        "root_cause": "The pipeline flagged an incident but did not provide a detailed root cause yet.",
-        "severity": "medium",
-        "suggested_fix": "Review recent logs and continue the investigation.",
-        "code_refs": [],
-    }
+    incident = _extract_incident(normalized)
     metadata = normalized.get("metadata") or {}
     pipeline = normalized.get("pipeline") or {}
     severity = str(incident.get("severity", "medium"))
@@ -177,6 +171,38 @@ def _build_summary(event: dict[str, Any], incident: dict[str, Any]) -> str:
         lines.append(f"Relevant metadata: {extra_bits}")
 
     return "\n".join(lines)
+
+
+def _extract_incident(event: dict[str, Any]) -> dict[str, Any]:
+    incident = event.get("incident")
+    if isinstance(incident, dict) and incident:
+        return incident
+
+    top_level = {
+        "report": event.get("report"),
+        "root_cause": event.get("root_cause"),
+        "severity": event.get("severity"),
+        "suggested_fix": event.get("suggested_fix"),
+        "code_refs": event.get("code_refs"),
+    }
+    if any(value not in (None, "", []) for value in top_level.values()):
+        return {
+            "report": top_level.get("report") or "SnoopLog incident detected",
+            "root_cause": top_level.get("root_cause")
+            or "The pipeline flagged an incident but did not provide a detailed root cause yet.",
+            "severity": top_level.get("severity") or "medium",
+            "suggested_fix": top_level.get("suggested_fix")
+            or "Review recent logs and continue the investigation.",
+            "code_refs": top_level.get("code_refs") or [],
+        }
+
+    return {
+        "report": "SnoopLog incident detected",
+        "root_cause": "The pipeline flagged an incident but did not provide a detailed root cause yet.",
+        "severity": "medium",
+        "suggested_fix": "Review recent logs and continue the investigation.",
+        "code_refs": [],
+    }
 
 
 def _format_code_refs(code_refs: list[dict[str, Any]]) -> str:
