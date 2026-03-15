@@ -13,6 +13,17 @@ logger = logging.getLogger("snooplog.llm.openrouter")
 class OpenRouterError(RuntimeError):
     """Raised when an OpenRouter request fails."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        response_text: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.response_text = response_text
+
 
 class OpenRouterChatClient:
     """Minimal async client for OpenRouter chat completions."""
@@ -84,7 +95,9 @@ class OpenRouterChatClient:
 
         if response.status_code >= 400:
             raise OpenRouterError(
-                f"OpenRouter request failed with {response.status_code}: {response.text}"
+                f"OpenRouter request failed with {response.status_code}: {response.text}",
+                status_code=response.status_code,
+                response_text=response.text,
             )
 
         try:

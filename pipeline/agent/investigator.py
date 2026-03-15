@@ -171,6 +171,7 @@ class LlmIncidentInvestigator:
         tool_executor,
         fallback: HeuristicIncidentInvestigator,
         model: str | None = None,
+        fallback_models: list[str] | None = None,
         max_iterations: int = 10,
         total_timeout_seconds: float | None = None,
     ) -> None:
@@ -179,6 +180,20 @@ class LlmIncidentInvestigator:
         self._fallback = fallback
         self._pattern_memory = None
         self._model = model or os.getenv("OPENROUTER_INVESTIGATION_MODEL", "z-ai/glm-5")
+        configured_fallbacks = fallback_models
+        if configured_fallbacks is None:
+            raw_fallbacks = os.getenv(
+                "OPENROUTER_INVESTIGATION_FALLBACK_MODELS",
+                "minimax/minimax-m2.5",
+            )
+            configured_fallbacks = [
+                candidate.strip()
+                for candidate in raw_fallbacks.split(",")
+                if candidate.strip()
+            ]
+        self._fallback_models = [
+            candidate for candidate in configured_fallbacks if candidate != self._model
+        ]
         self._max_iterations = max_iterations
         self._total_timeout_seconds = total_timeout_seconds or float(
             os.getenv("INVESTIGATION_TIMEOUT_SECONDS", "60")
@@ -198,11 +213,6 @@ class LlmIncidentInvestigator:
         if not self._llm_client.enabled:
             return await self._fallback.investigate(logs, reason=reason, urgency=urgency)
 
-        logger.info(
-            "Using OpenRouter investigation model %s for %s log(s)",
-            self._model,
-            len(logs),
-        )
         fallback_reason = reason
         fallback_urgency = urgency
 
@@ -215,72 +225,45 @@ class LlmIncidentInvestigator:
         ]
         tools = self._tool_executor.get_tool_definitions()
         seen_tool_calls: dict[tuple[str, str], int] = {}
+        models = [self._model, *self._fallback_models]
 
         try:
             async with asyncio.timeout(self._total_timeout_seconds):
-                for _ in range(self._max_iterations):
-                    response = await self._llm_client.create_chat_completion(
-                        model=self._model,
-                        messages=messages,
-                        tools=tools,
-                        tool_choice="auto",
-                        max_tokens=1200,
-                        temperature=0.1,
+                for index, model_name in enumerate(models):
+                    logger.info(
+                        "Using OpenRouter investigation model %s for %s log(s)",
+                        model_name,
+                        len(logs),
                     )
-                    message = get_first_message(response)
-                    tool_calls = message.get("tool_calls") or []
-                    assistant_content = get_message_text(message)
-                    assistant_message = {"role": "assistant", "content": assistant_content}
-                    if tool_calls:
-                        assistant_message["tool_calls"] = tool_calls
-                    messages.append(assistant_message)
-
-                    if tool_calls:
-                        for tool_call in tool_calls:
-                            tool_name = tool_call.get("function", {}).get("name", "")
-                            raw_args = tool_call.get("function", {}).get("arguments", "{}")
-                            tool_args = _safe_parse_tool_args(raw_args)
-                            result = await self._execute_tool_call(
-                                tool_name=tool_name,
-                                tool_args=tool_args,
-                                raw_args=raw_args,
-                                seen_tool_calls=seen_tool_calls,
+                    try:
+                        incident = await self._run_investigation_loop(
+                            model_name=model_name,
+                            logs=logs,
+                            messages=messages,
+                            tools=tools,
+                            seen_tool_calls=seen_tool_calls,
+                        )
+                        return await self._emit_incident(logs, incident, reason, urgency)
+                    except OpenRouterError as exc:
+                        if index < len(models) - 1 and _should_retry_with_fallback_model(exc):
+                            next_model = models[index + 1]
+                            logger.warning(
+                                "OpenRouter investigation model %s failed with %s; retrying with %s",
+                                model_name,
+                                exc,
+                                next_model,
                             )
-                            await bus.emit(
-                                "agent:tool_call",
-                                build_tool_call_event_payload(
-                                    tool_name=tool_name or "unknown",
-                                    tool_args=tool_args,
-                                    result=result,
-                                    log_ids=[log.get("id") for log in logs],
-                                    source=logs[0].get("source", "unknown"),
-                                    tool_call_id=tool_call.get("id"),
-                                ),
-                            )
-                            messages.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.get("id"),
-                                    "name": tool_name,
-                                    "content": result,
-                                }
-                            )
-                        continue
-
-                    if not assistant_content.strip():
-                        raise OpenRouterError("Model returned neither tool calls nor final content")
-
-                    incident = await self._coerce_incident_report(messages)
-                    return await self._emit_incident(logs, incident, reason, urgency)
-
-            logger.warning("LLM investigation hit max iterations; falling back")
-            fallback_reason = f"{reason} (fallback after max iterations)"
+                            continue
+                        logger.warning("OpenRouter investigation failed: %s", exc)
+                        fallback_reason = f"{reason} (fallback after OpenRouter error: {exc})"
+                        break
+                    except _InvestigationMaxIterationsExceeded:
+                        logger.warning("LLM investigation hit max iterations; falling back")
+                        fallback_reason = f"{reason} (fallback after max iterations)"
+                        break
         except TimeoutError:
             logger.warning("OpenRouter investigation timed out after %.1fs", self._total_timeout_seconds)
             fallback_reason = f"{reason} (fallback after timeout)"
-        except OpenRouterError as exc:
-            logger.warning("OpenRouter investigation failed: %s", exc)
-            fallback_reason = f"{reason} (fallback after OpenRouter error: {exc})"
         except Exception as exc:
             logger.exception("Unexpected investigation failure")
             fallback_reason = f"{reason} (fallback after unexpected error: {exc})"
@@ -291,7 +274,77 @@ class LlmIncidentInvestigator:
             urgency=fallback_urgency,
         )
 
-    async def _coerce_incident_report(self, messages: list[dict[str, Any]]) -> IncidentReport:
+    async def _run_investigation_loop(
+        self,
+        *,
+        model_name: str,
+        logs: list[dict[str, Any]],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        seen_tool_calls: dict[tuple[str, str], int],
+    ) -> IncidentReport:
+        for _ in range(self._max_iterations):
+            response = await self._llm_client.create_chat_completion(
+                model=model_name,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                max_tokens=1200,
+                temperature=0.1,
+            )
+            message = get_first_message(response)
+            tool_calls = message.get("tool_calls") or []
+            assistant_content = get_message_text(message)
+            assistant_message = {"role": "assistant", "content": assistant_content}
+            if tool_calls:
+                assistant_message["tool_calls"] = tool_calls
+            messages.append(assistant_message)
+
+            if tool_calls:
+                for tool_call in tool_calls:
+                    tool_name = tool_call.get("function", {}).get("name", "")
+                    raw_args = tool_call.get("function", {}).get("arguments", "{}")
+                    tool_args = _safe_parse_tool_args(raw_args)
+                    result = await self._execute_tool_call(
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        raw_args=raw_args,
+                        seen_tool_calls=seen_tool_calls,
+                    )
+                    await bus.emit(
+                        "agent:tool_call",
+                        build_tool_call_event_payload(
+                            tool_name=tool_name or "unknown",
+                            tool_args=tool_args,
+                            result=result,
+                            log_ids=[log.get("id") for log in logs],
+                            source=logs[0].get("source", "unknown"),
+                            tool_call_id=tool_call.get("id"),
+                        ),
+                    )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.get("id"),
+                            "name": tool_name,
+                            "content": result,
+                        }
+                    )
+                continue
+
+            if not assistant_content.strip():
+                raise OpenRouterError("Model returned neither tool calls nor final content")
+
+            return await self._coerce_incident_report(messages, model_name=model_name)
+
+        raise _InvestigationMaxIterationsExceeded()
+
+    async def _coerce_incident_report(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        model_name: str,
+    ) -> IncidentReport:
         last_message = messages[-1]
         content = get_message_text(last_message)
         try:
@@ -299,7 +352,7 @@ class LlmIncidentInvestigator:
             return _build_incident_from_payload(payload)
         except ValueError:
             response = await self._llm_client.create_chat_completion(
-                model=self._model,
+                model=model_name,
                 messages=messages
                 + [
                     {
@@ -392,6 +445,28 @@ def _build_incident_from_payload(payload: dict[str, Any]) -> IncidentReport:
         "suggested_fix": payload.get("suggested_fix", ""),
     }
     return IncidentReport.model_validate(normalized)
+
+
+class _InvestigationMaxIterationsExceeded(RuntimeError):
+    pass
+
+
+def _should_retry_with_fallback_model(exc: OpenRouterError) -> bool:
+    if exc.status_code in {402, 408, 409, 429, 500, 502, 503, 504}:
+        return True
+    message = str(exc).lower()
+    return any(
+        token in message
+        for token in (
+            "rate-limit",
+            "rate limited",
+            "temporarily rate-limited",
+            "payment required",
+            "more credits",
+            "provider returned error",
+            "timeout",
+        )
+    )
 
 
 def _log_incident_payload(payload: dict[str, Any]) -> None:
