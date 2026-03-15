@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   triggerSilentProductSelectionError,
+  triggerMonitorConnectionPoolError,
   maybeSlowInventoryLookup,
   maybeHeapPressure,
   maybeCacheInconsistency,
@@ -62,6 +63,23 @@ export async function POST(request) {
   // --- Subtle anomalies (probabilistic, any product) ---
 
   if (product.id === "sku_monitor") {
+    try {
+      triggerMonitorConnectionPoolError(product);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      logEvent(
+        "error",
+        `Connection pool error in inventory service: ${errorMsg}`,
+        {
+          route: "/api/products/select",
+          productId: product.id,
+          productName: product.name,
+        },
+        { raw: errorStack },
+      );
+    }
+
     const slow = maybeSlowInventoryLookup(product);
     if (slow.triggered) {
       logEvent("warn", `Inventory lookup for ${product.id} exceeded latency threshold (${slow.latencyMs}ms)`, {

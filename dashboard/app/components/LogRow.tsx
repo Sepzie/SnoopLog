@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 export type PipelineState = {
   anomaly_score?: number;
   tier?: string;
@@ -50,6 +54,7 @@ function levelBadge(level: string): string {
 }
 
 export function LogRow({ log }: LogRowProps) {
+  const [expanded, setExpanded] = useState(false);
   const timestamp = log.timestamp
     ? new Date(log.timestamp).toLocaleTimeString()
     : "unknown";
@@ -60,16 +65,19 @@ export function LogRow({ log }: LogRowProps) {
 
   return (
     <div
-      className={`overflow-hidden rounded-lg border border-black/4 border-l-[3px] ${colors.border} bg-white/80 transition hover:bg-white`}
+      className={`overflow-hidden rounded-lg border border-black/4 border-l-[3px] ${colors.border} bg-white/80 transition hover:bg-white cursor-pointer`}
+      onClick={() => setExpanded((v) => !v)}
     >
       <div className="flex items-center gap-2 px-3 py-2 text-[11px]">
         <span className="text-[var(--muted)]">{timestamp}</span>
         <span
-          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${levelBadge(level)}`}
+          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${levelBadge(level)}`}
         >
           {level}
         </span>
-        <span className="min-w-0 flex-1 truncate text-[#4d4a57]">
+        <span
+          className={`min-w-0 flex-1 text-[#4d4a57] ${expanded ? "whitespace-pre-wrap break-words" : "truncate"}`}
+        >
           {log.message ?? "(no message)"}
         </span>
       </div>

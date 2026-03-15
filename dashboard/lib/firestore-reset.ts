@@ -51,4 +51,28 @@ export async function resetFirestore(): Promise<void> {
     logs_suppressed: 0,
   });
   await batch.commit();
+
+  // Clear pipeline in-memory state (incident tracker, batcher, pattern memory)
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+  if (wsUrl) {
+    try {
+      const url = new URL(wsUrl);
+      const protocol = url.protocol === "wss:" ? "https:" : "http:";
+      const pipelineBase = `${protocol}//${url.host}`;
+      await fetch(`${pipelineBase}/reset`, { method: "POST" });
+    } catch {
+      // Pipeline may be unreachable — Firestore reset still succeeded
+    }
+  } else if (typeof window !== "undefined") {
+    try {
+      const { hostname } = window.location;
+      const base =
+        hostname === "localhost" || hostname === "127.0.0.1"
+          ? `http://${hostname}:3001`
+          : `${window.location.protocol}//${window.location.host}`;
+      await fetch(`${base}/reset`, { method: "POST" });
+    } catch {
+      // Pipeline may be unreachable — Firestore reset still succeeded
+    }
+  }
 }

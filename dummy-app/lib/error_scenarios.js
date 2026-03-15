@@ -16,6 +16,32 @@ function attachSelectionSnapshot(product) {
   };
 }
 
+// --- Deterministic error for sku_monitor (traffic gen trigger) ---
+
+let _monitorSelectCount = 0;
+const MONITOR_ERROR_INTERVAL = 8;
+
+export function triggerMonitorConnectionPoolError(product) {
+  _monitorSelectCount++;
+  if (_monitorSelectCount % MONITOR_ERROR_INTERVAL !== 0) {
+    return { triggered: false };
+  }
+  return resolveConnectionPool(product);
+}
+
+function resolveConnectionPool(product) {
+  return acquirePoolSlot(product);
+}
+
+function acquirePoolSlot(product) {
+  const pool = { connections: null };
+
+  // Bug: pool.connections is null because the pool was never initialized after
+  // a config reload — this mirrors a real missed init path.
+  const slot = pool.connections.find((conn) => conn.available);
+  return { productId: product.id, connectionId: slot.id };
+}
+
 // --- Subtle anomalies for other products (probabilistic) ---
 
 /**

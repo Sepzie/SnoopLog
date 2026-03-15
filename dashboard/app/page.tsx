@@ -119,7 +119,7 @@ function DashboardContent() {
 
         <LiveStats onOpenAgentTrail={openAgentTrail} />
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <section className="mt-4 grid gap-4 xl:grid-cols-[3fr_2fr]">
           {/* Primary: Escalations */}
           <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-black/8 bg-white p-4 shadow-[0_8px_30px_rgba(20,20,20,0.04)]">
             <div className="mb-3 flex items-center justify-between">
@@ -136,7 +136,7 @@ function DashboardContent() {
           </article>
 
           {/* Secondary: Log stream */}
-          <article className="flex flex-col rounded-2xl border border-black/8 bg-white p-4 shadow-[0_8px_30px_rgba(20,20,20,0.04)]">
+          <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-black/8 bg-white p-4 shadow-[0_8px_30px_rgba(20,20,20,0.04)]">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold tracking-[-0.02em] text-[#2b2735]">
                 Log Stream

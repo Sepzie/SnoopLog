@@ -35,7 +35,7 @@ jobs:
           fi
           END_TIME=$(( $(date +%s) + DURATION_MIN * 60 ))
 
-          SKUS=("sku_keyboard" "sku_monitor" "sku_headset" "sku_laptop_stand")
+          SKUS=("sku_monitor" "sku_headset" "sku_laptop_stand")
           EMAILS=("alice@example.com" "bob@test.io" "carol@demo.dev" "dave@shop.net" "eve@acme.org")
 
           # Weighted action picker: browse heavy, orders moderate, selects common

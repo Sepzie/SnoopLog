@@ -227,6 +227,15 @@ class KnownPatternMemory:
             self._connection.commit()
             return self._snapshots.save_file(_SNAPSHOT_NAME, self._db_path)
 
+    def clear(self) -> None:
+        """Delete all remembered patterns (used by /reset)."""
+        with self._lock:
+            if self._closed:
+                return
+            self._connection.execute("DELETE FROM known_patterns")
+            self._connection.commit()
+            logger.info("Pattern memory cleared")
+
     def close(self) -> None:
         with self._lock:
             if self._closed:

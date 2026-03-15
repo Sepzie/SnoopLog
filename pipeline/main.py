@@ -141,6 +141,31 @@ async def startup():
     configure_firestore_integration()
 
 
+@app.post("/reset")
+async def reset_pipeline_state():
+    """Clear all in-memory state so incidents are treated as new."""
+    tracker: IncidentCorrelationTracker | None = getattr(app.state, "tier_router", None) and getattr(
+        app.state.tier_router, "_incident_tracker", None
+    )
+    batcher: MediumLogBatcher | None = getattr(app.state, "medium_batcher", None)
+    pattern_mem: KnownPatternMemory | None = getattr(app.state, "pattern_memory", None)
+
+    if tracker is not None:
+        async with tracker._lock:
+            tracker._incidents.clear()
+    if batcher is not None:
+        async with batcher._lock:
+            batcher._batches.clear()
+            for task in batcher._flush_tasks.values():
+                task.cancel()
+            batcher._flush_tasks.clear()
+    if pattern_mem is not None:
+        pattern_mem.clear()
+
+    logger.info("Pipeline in-memory state reset")
+    return {"status": "ok", "message": "Pipeline state cleared"}
+
+
 @app.on_event("shutdown")
 async def shutdown():
     batcher = getattr(app.state, "medium_batcher", None)
