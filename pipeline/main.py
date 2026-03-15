@@ -8,6 +8,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from pipeline.integrations.discord import configure_discord_integration
 from shared.events import bus
 
 logging.basicConfig(
@@ -68,5 +69,6 @@ app.include_router(ingestion_router, prefix="/api")
 @app.on_event("startup")
 async def startup():
     logger.info("SnoopLog pipeline starting up")
+    configure_discord_integration()
     # Person 2: wire tier router subscription here
     # e.g. bus.subscribe("log:scored", tier_router.handle)

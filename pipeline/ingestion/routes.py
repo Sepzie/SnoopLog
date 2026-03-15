@@ -9,7 +9,7 @@ from fastapi import APIRouter
 
 from shared.events import bus
 from shared.log_buffer import add_to_log_buffer
-from shared.models import LogEvent
+from shared.models import LogEvent, Tier
 
 logger = logging.getLogger("snooplog.ingestion")
 
@@ -69,9 +69,9 @@ def _stub_score(event: LogEvent) -> float:
     return level_scores.get(event.level.value, 0.2)
 
 
-def _assign_tier(score: float) -> str:
+def _assign_tier(score: float) -> Tier:
     if score > 0.7:
-        return "high"
+        return Tier.HIGH
     if score >= 0.3:
-        return "medium"
-    return "low"
+        return Tier.MEDIUM
+    return Tier.LOW
