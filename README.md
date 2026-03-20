@@ -4,6 +4,10 @@ AI log intelligence pipeline: ingest logs → ML anomaly scoring → tiered LLM 
 
 **HackTheBreak 2026 | March 13-15**
 
+# Hosted
+**Dashboard:** https://snooplog-dashboard.vercel.app/ 
+**Dummy App:** https://snooplog-dummy-app.vercel.app/
+
 ## Team
 
 - Clayton Hunter
